@@ -4,8 +4,8 @@ stages:
 deploy-dev:
   stage: deploy
   script:
-    cd frontend
-    nohup python3 -m http.server 8001 2>&1 &
+    - cd frontend
+    - nohup python3 -m http.server 8001 2>&1 &
   tags:
     - dev-srv
   environment: develop
