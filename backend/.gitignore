@@ -1,0 +1,6 @@
+# compiled python files
+__pycache__/
+# virtual environment
+venv/
+# pytest cache
+.pytest_cache/
