@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Calculator - watertech.vn</title>
+  <link rel="icon" type="image/png" href="assets/favicorn.png">
+  <link rel="stylesheet" href="css/style.css"/>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet/dist/leaflet.css"
+  />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+  />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+  />
+  <script>
+    window.ENV = {
+      BASE_API_URL: "http://localhost:8000/api",
+      VERSION: "1.0.0"
+    };
+  </script>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="https://geoportal.watertech.vn/">
+        <img src="assets/logo5721.png" alt="Logo" class="logo"/>
+      </a>
+      <nav>
+        <ul class="nav-tabs">
+          <li id="tab-calc" class="active">WQI Calculation</li>
+          <li id="tab-predict">WQI Prediction</li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- HERO / BANNER -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1>Welcome</h1>
+      <p>WaterTech GeoPortal – Geospatial Data Sharing Platform for WaterTech.</p>
+      <a href="https://geoportal.watertech.vn/layers/?limit=5&offset=0" class="btn-geoportal" target="_blank">Explore layers</a>
+    </div>
+  </section>
+
+  <!-- MAIN CONTENT -->
+  <main id="main-content">
+    <!-- Nội dung sẽ thay đổi theo tab -->
+  </main>
+
+  <!-- Map lib -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
+  ></script>
+
+  <!-- SCRIPTS -->
+  <script type="module" src="js/main.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+</body>
+<!-- FOOTER -->
+<footer class="footer">
+  <p>Powered by: <a href="https://geoportal.watertech.vn/">GeoPortal</a></p>
+</footer>
+</html>
