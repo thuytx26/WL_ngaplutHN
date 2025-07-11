@@ -6,9 +6,10 @@ deploy-dev:
   variables:
     GIT_STRATEGY: clone
   script:
-    - sudo cp -r frontend/* /data/vnwqi/frontend/
+    - sudo cp -r ./* /data/vnwqi/
     - sudo chown -R vnwqi:vnwqi /data/vnwqi
-    - sudo su vnwqi -c "cd /data/vnwqi/frontend && python3 -m http.server 8001 & sleep 120; kill \$!"
+    - sudo su vnwqi -c "cd /data/vnwqi; docker compose down || true; docker compose up --build -d; sleep 120; docker compose down"
+    - echo "Successfully"
   tags:
     - dev-srv
   environment: develop
