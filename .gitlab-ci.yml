@@ -4,10 +4,8 @@ stages:
 deploy-dev:
   stage: deploy
   script:
-    - echo "This job deploys something from the $CI_COMMIT_BRANCH branch."
-    - pwd
-    - whoami
-    - ls
+    cd frontend
+    nohup python3 -m http.server 8001 2>&1 &
   tags:
     - dev-srv
   environment: develop
