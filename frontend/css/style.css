@@ -1,0 +1,398 @@
+/* color */
+:root {
+  --primary: #2B689C; /* màu xanh dương mặc định, bạn có thể thay bằng mã màu khác */
+}
+/* Reset mặc định */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  footer {
+    margin-top: 40px;     /* tăng hoặc giảm px tuỳ ý */
+  }
+
+  .hero {
+    margin-bottom: 40px;
+  }
+  
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f9f9f9;
+    color: #333;
+    overflow-x: hidden;
+  }
+  
+  /* HEADER */
+  .navbar {
+    background-color: white;
+    padding: 7px 0;
+    border-bottom: 1px solid #ddd;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+  
+  .nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .logo {
+    height: 65px;
+  }
+  
+  .nav-tabs {
+    list-style: none;
+    display: flex;
+    gap: 24px;
+  }
+  
+  .nav-tabs li {
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: 500;
+    color: #2c3e50;
+    transition: background 0.3s;
+  }
+  
+  .nav-tabs li:hover,
+  .nav-tabs li.active {
+    background-color: #e6f1ff;
+    color: var(--primary);
+  }
+  
+  /* HERO SECTION */
+  .hero {
+    background-color: var(--primary);
+    color: white;
+    text-align: center;
+    padding: 150px 20px;
+  }
+  
+  .hero-content {
+    max-width: 800px;
+    margin: auto;
+  }
+  
+  .hero h1 {
+    font-size: 56px;
+    margin-bottom: 10px;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+  
+  .hero p {
+    font-size: 20px;
+    font-weight: 300;
+    margin-bottom: 30px;
+  }
+  
+  .btn-geoportal {
+    background-color: #2c3e50;
+    color: white;
+    padding: 12px 28px;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 16px;
+    display: inline-block;
+    transition: background 0.3s;
+  }
+  
+  .btn-geoportal:hover {
+    background-color: #1c2d3f;
+  }
+  
+  /* MAIN CONTENT */
+  section h2 {
+    font-size: 32px;
+    margin-bottom: 20px;
+    text-align: left;
+    color: var(--primary);
+  }
+
+  .section-header-divider {
+    border: none;
+    height: 2px;
+    background-color: var(--primary);
+    margin: 10px 0 20px;
+    margin-bottom: 20px;
+  }
+
+/* Feature 1: calculate wqi */
+
+  .card {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    margin: 20px 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    background-color: #fff;
+  }
+  
+  .card-header {
+    background-color: #f2f2f2;
+    padding: 12px 20px;
+    font-weight: bold;
+    font-size: 16px;
+    border-bottom: 1px solid #ddd;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+  
+  .card-body {
+    padding: 16px 20px;
+  }
+
+  .btn-calc {
+    padding: 10px 20px;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  .centered-container {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .btn-calc:hover {
+    background-color: #0056b3;
+  }
+  
+  .btn-download {
+    display: inline-block;
+    padding: 8px 16px;
+    background-color: var(--primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    width: 220px;
+    margin-bottom: 10px;
+    margin-top: 10px
+  }
+  
+  .btn-download:hover {
+    background-color: #0056b3;
+  }
+  
+  .status-message.success {
+    color: #2e7d32;
+    margin-bottom: 10px;
+    font-weight: bold;
+  }
+  
+  .btn-download {
+    display: inline-block;
+    padding: 10px 16px;
+    background-color: var(--primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  #wqi-map {
+    width: 100%;
+    max-width: 1300px;
+    height: 600px;
+    margin: 0 auto;
+
+  }
+  .wqi-map--has-border {
+    border: 3px solid var(--primary);
+    border-radius: 4px;   /* tuỳ chọn bo góc */
+    box-sizing: border-box;
+  }
+
+  .info.legend {
+    background: white;
+    padding: 8px;
+    line-height: 1.4;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+    width: 300px;
+    font-size: 18px;
+  }
+  .info.legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.8;
+  }
+
+  /* Tăng font-size và line-height cho nội dung popup */
+  .leaflet-popup-content {
+    font-size: 1rem;       /* hoặc 16px, 18px tuỳ bạn */
+    line-height: 1.5;
+    text-align: left;
+  }
+
+  /* Tăng chiều rộng tối đa của popup */
+  .leaflet-popup-content-wrapper {
+    max-width: 300px;      /* thay đổi nếu muốn rộng hơn */
+  }
+
+  /* (Tuỳ chọn) Tăng padding bên trong */
+  .leaflet-popup-content-wrapper .leaflet-popup-content {
+    padding: 10px 14px;    /* top/bottom 10px, left/right 14px */
+  }
+
+  /* (Tuỳ chọn) Tăng kích thước mũi tên */
+  .leaflet-popup-tip-container .leaflet-popup-tip {
+    width: 16px;
+    height: 16px;
+    margin-left: 12px
+  }
+  
+
+/* Feature 2: Predict wqi */
+.wqi-form-container {
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  margin: auto;
+}
+
+.wqi-form-container h2 {
+  margin-bottom: 20px;
+}
+
+.wqi-form-container .form-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.wqi-form-container label {
+  flex: 1;
+  font-weight: 500;
+}
+
+.wqi-form-container input {
+  flex: 2;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.wqi-form-container button {
+  padding: 10px 20px;
+  background-color: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.wqi-form-container button:hover {
+  background-color: #0056b3;
+}
+
+#predict-result {
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 8px;
+  background-color: #f5f5f5;
+}
+
+.result-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  margin-top: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.result-title {
+  margin-bottom: 16px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.result-label {
+  flex: 1;
+  font-weight: 500;
+  color: #555;
+}
+
+.result-value {
+  flex: 2;
+  font-weight: bold;
+  font-size: 16px;
+  color: #111;
+  text-align: right;
+}
+
+.result-badge {
+  background-color: #eee;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  color: #222;
+  border: 1px solid #ccc;
+  margin-left: auto;
+}
+
+.color-tag {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  margin-right: 8px;
+  border: 1px solid #999;
+}
+
+.color-code {
+  font-family: monospace;
+  color: #444;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+  
+  
+  /* FOOTER */
+  .footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 18px;
+    color: white;
+    background-color: var(--primary);
+    border-top: 1px solid #ccc;
+  }
+  
+  .footer a {
+    color: white;
+    text-decoration: none;
+  }
+  
+  .footer a:hover {
+    text-decoration: underline;
+  }
+  
