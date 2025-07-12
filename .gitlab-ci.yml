@@ -8,7 +8,7 @@ deploy-dev:
   script:
     - sudo cp -r ./* /data/vnwqi/
     - sudo chown -R vnwqi:vnwqi /data/vnwqi
-    - sudo su vnwqi -c "cd /data/vnwqi; docker compose down || true; docker compose up --build -d; sleep 120; docker compose down"
+    - sudo su vnwqi -c "cd /data/vnwqi; docker compose down || true; docker compose up --build -d"
     - echo "Successfully"
   tags:
     - dev-srv
