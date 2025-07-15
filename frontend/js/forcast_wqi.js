@@ -58,8 +58,8 @@ function displayforcast(data, container) {
     return `${year}-${month}-${day}`;
   };
 
-  const forecastDates = [1, 3, 6, 12].map(m => nextMonthOn1st(lastDate, m));
-  const labels = ["1_month", "3_month", "6_month", "12_month"];
+  const labels = Array.from({ length: 12 }, (_, i) => `${i + 1}_month`);
+  const forecastDates = labels.map((_, i) => nextMonthOn1st(lastDate, i + 1));
 
   const forecastValues = labels.map(key => forecast[key].wqi);
   const forecastLower = labels.map(key => forecast[key].lower_bound);
