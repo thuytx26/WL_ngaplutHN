@@ -12,7 +12,10 @@ def forecast(longitude: float, latitude: float, df4forcast) -> dict: # Đổi t�
     wqi_series = weighted_time_average(df4forcast, nearest_codes, nearest_distances, n=6)
 
     # Gọi hàm forecast_wqi_monthly đã được cập nhật để trả về khoảng tin cậy
-    forecast_result = forecast_wqi_monthly(wqi_series, steps=[1, 3, 6, 12])
+    forecast_result = forecast_wqi_monthly(
+        wqi_series, 
+        steps=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        )
 
     return {
         "nearest_codes": nearest_codes,
