@@ -2,53 +2,79 @@ import pandas as pd
 from prophet import Prophet
 import numpy as np
 
-def forecast_wqi_monthly(series: pd.Series, steps: list = [1, 3, 6, 12], interval_width: float = 0.80) -> dict:
+def forecast_wqi_monthly(
+    series: pd.Series,
+    steps: list = [1, 3, 6, 12],
+    interval_width: float = 0.80,
+    noise_scale: float = 1.0
+) -> dict:
     """
-    Dự báo WQI theo tháng với Prophet, thêm nhiễu nhỏ có kiểm soát để tránh đường dự báo quá tuyến tính.
-    
-    Parameters:
-        series (pd.Series): Chuỗi WQI theo thời gian (index là datetime, giá trị trong [0–100])
-        steps (list): Danh sách các bước thời gian dự báo (theo tháng), ví dụ: [1,3,6,12]
-        interval_width (float): Độ rộng khoảng tin cậy (ví dụ: 0.80 cho 80%)
-    
-    Returns:
-        dict: Từ điển với các khóa '1_month', '2_month',..., mỗi khóa chứa:
-              - wqi: giá trị dự báo chính (float)
-              - lower_bound: giới hạn dưới của khoảng tin cậy
-              - upper_bound: giới hạn trên của khoảng tin cậy
+    Dự báo WQI theo tháng với Prophet, thêm nhiễu tỷ lệ với độ biến thiên lịch sử.
     """
-    # Làm sạch giá trị đầu vào và giới hạn trong [0, 100]
-    df = pd.DataFrame({'ds': series.index, 'y': series.clip(0, 100)})
+    # Chuẩn bị dữ liệu
+    df = pd.DataFrame({
+        'ds': series.index,
+        'y': series.clip(0, 100)
+    })
 
-    # Khởi tạo Prophet với khoảng tin cậy mặc định (không thêm seasonality thủ công)
+    # Fit model
     model = Prophet(interval_width=interval_width)
     model.fit(df)
 
-    # Dự báo tới bước xa nhất
+    # Tính noise_value bằng population std (ddof=0)
+    train_pred = model.predict(df[['ds']])
+    resid = df['y'] - train_pred['yhat']
+    noise_value = resid.to_numpy().std()  # ddof=0, tránh NaN với 1 phần tử
+
+    # Fallback nếu noise_value không hợp lệ
+    if not np.isfinite(noise_value) or noise_value == 0:
+        # thử độ lệch chuẩn của diff
+        diff_std = series.diff().dropna().to_numpy().std()
+        if np.isfinite(diff_std) and diff_std > 0:
+            noise_value = diff_std
+        else:
+            noise_value = 1.0  # giá trị mặc định an toàn
+
+    # Forecast
     max_step = max(steps)
     future = model.make_future_dataframe(periods=max_step, freq='MS')
     forecast = model.predict(future)
 
-    # Đặt seed để đảm bảo kết quả nhất quán nếu cần
     np.random.seed(42)
-
     result = {}
     for step in steps:
-        target_date = df['ds'].max() + pd.DateOffset(months=step)
-        row = forecast[forecast['ds'] == target_date]
-        if not row.empty:
-            # Thêm nhiễu có kiểm soát vào dự báo và khoảng tin cậy
-            noise = np.random.normal(0, 10)
-            yhat = round(row['yhat'].values[0] + noise, 2)
-            yhat_lower = round(row['yhat_lower'].values[0] + noise, 2)
-            yhat_upper = round(row['yhat_upper'].values[0] + noise, 2)
-
-            result[f'{step}_month'] = {
-                'wqi': max(0, min(yhat, 100)),
-                'lower_bound': max(0, min(yhat_lower, 100)),
-                'upper_bound': max(0, min(yhat_upper, 100))
-            }
-        else:
+        target = df['ds'].max() + pd.DateOffset(months=step)
+        row = forecast[forecast['ds'] == target]
+        if row.empty:
             result[f'{step}_month'] = None
+            continue
+
+        # Lấy giá trị gốc
+        yhat = row['yhat'].values[0]
+        lo0 = row['yhat_lower'].values[0]
+        hi0 = row['yhat_upper'].values[0]
+
+        # Sinh noise
+        noise = np.random.normal(0, noise_value * noise_scale)
+
+        # Áp noise
+        y = yhat + noise
+        lo = lo0 + noise
+        hi = hi0 + noise
+
+        # Clamp vào [0,100]
+        y = np.clip(y, 0, 100)
+        lo = np.clip(lo, 0, 100)
+        hi = np.clip(hi, 0, 100)
+
+        # Chuyển NaN thành None, convert float
+        def _clean(v):
+            return None if not np.isfinite(v) else float(v)
+
+        result[f'{step}_month'] = {
+            'wqi': round(_clean(y), 2) if _clean(y) is not None else None,
+            'lower_bound': round(_clean(lo), 2) if _clean(lo) is not None else None,
+            'upper_bound': round(_clean(hi), 2) if _clean(hi) is not None else None,
+        }
 
     return result
