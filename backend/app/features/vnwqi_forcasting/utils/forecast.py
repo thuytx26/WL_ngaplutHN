@@ -38,7 +38,7 @@ def forecast_wqi_monthly(series: pd.Series, steps: list = [1, 3, 6, 12], interva
         row = forecast[forecast['ds'] == target_date]
         if not row.empty:
             # Thêm nhiễu có kiểm soát vào dự báo và khoảng tin cậy
-            noise = np.random.normal(0, 2)
+            noise = np.random.normal(0, 10)
             yhat = round(row['yhat'].values[0] + noise, 2)
             yhat_lower = round(row['yhat_lower'].values[0] + noise, 2)
             yhat_upper = round(row['yhat_upper'].values[0] + noise, 2)
