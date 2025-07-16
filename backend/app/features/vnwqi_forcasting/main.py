@@ -9,7 +9,7 @@ def forecast(longitude: float, latitude: float, df4forcast) -> dict: # Đổi t�
     nearest_distances = nearest_points['distance_deg'].tolist()
 
     # calculate weighted average WQI for the nearest points
-    wqi_series = weighted_time_average(df4forcast, nearest_codes, nearest_distances, n=12)
+    wqi_series = weighted_time_average(df4forcast, nearest_codes, nearest_distances, n=15)
 
     # Gọi hàm forecast_wqi_monthly đã được cập nhật để trả về khoảng tin cậy
     forecast_result = forecast_wqi_monthly(
