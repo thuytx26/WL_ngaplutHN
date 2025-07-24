@@ -2,14 +2,14 @@ import pandas as pd
 from prophet import Prophet
 import numpy as np
 
-def forecast_wqi_monthly(
+def forecast_wq_monthly(
     series: pd.Series,
     steps: list = [1, 3, 6, 12],
     interval_width: float = 0.80,
     noise_scale: float = 1.0
 ) -> dict:
     """
-    Dự báo WQI theo tháng với Prophet, thêm nhiễu tỷ lệ với độ biến thiên lịch sử.
+    Dự báo WQ theo tháng với Prophet, thêm nhiễu tỷ lệ với độ biến thiên lịch sử.
     """
     # Chuẩn bị dữ liệu
     df = pd.DataFrame({
