@@ -10,7 +10,11 @@ export function initforcastWQI() {
     const formData = new FormData(form);
     const payload = {};
     formData.forEach((value, key) => {
-      payload[key] = parseFloat(value);
+      if (key !== 'wq_param') {
+        payload[key] = parseFloat(value);
+      } else {
+        payload[key] = value;
+      }
     });
 
     resultBox.innerHTML = `<p>⏳ Đang xử lý...</p>`;
@@ -38,7 +42,7 @@ export function initforcastWQI() {
 }
 
 function displayforcast(data, container) {
-  const { forecast_next: forecast, history_dates: dates, wqi_series_avg: values } = data.forecasted_wqi;
+  const { forecast_next: forecast, history_dates: dates, wq_series_avg: values } = data.forecasted_wqi;
 
   const lastDate = new Date(dates[dates.length - 1]);
   lastDate.setDate(1);
