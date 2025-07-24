@@ -124,6 +124,16 @@ document.addEventListener("DOMContentLoaded", function () {
                               <input name="latitude" id="latitude" type="number" step="any" value="" required />
                           </div>
                       </div>
+                      <div class="form-group">
+                            <label for="wq_param">Choose a param:</label>
+                          <div class="input-with-buttons">
+                            <select id="wq_param" name="wq_param" default="wqi">
+                                <option value="wqi">WQI</option>
+                                <option value="bod5">BOD5</option>
+                                <option value="cod">cod</option>
+                            </select>
+                          </div>
+                        </div>
                       <button type="submit" class="submit">🚀 Predict</button>
                   </form>
                   <div id="predict-result" style="margin-top: 20px; position: relative; z-index: 500; flex-grow: 1; width: 100%;">
