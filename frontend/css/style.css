@@ -282,11 +282,20 @@
   font-weight: 500;
 }
 
+.wqi-form-container select {
+  flex: 2;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 400px;
+}
+
 .wqi-form-container input {
   flex: 2;
   padding: 6px 10px;
   border: 1px solid #ccc;
   border-radius: 6px;
+  width: 400px;
 }
 
 .wqi-form-container button {
@@ -296,6 +305,12 @@
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  text-align: center;
+}
+
+#wqi-location-form .submit {
+  display: block;
+  margin: 20px auto 0; /* 20px khoảng trên, auto 2 bên để căn giữa */
 }
 
 .wqi-form-container button:hover {

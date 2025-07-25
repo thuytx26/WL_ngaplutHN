@@ -22,9 +22,7 @@ export function initforcastWQI() {
     try {
       const response = await fetch(`${BASE_API_URL}/forcast_wqi`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
@@ -34,6 +32,7 @@ export function initforcastWQI() {
       }
 
       const result = await response.json();
+      // truyền nguyên như cũ, nhưng bên trong displayforcast sẽ tự đọc param
       displayforcast(result, resultBox);
     } catch (error) {
       resultBox.innerHTML = `<p style="color:red">❌ Lỗi: ${error.message}</p>`;
@@ -42,12 +41,19 @@ export function initforcastWQI() {
 }
 
 function displayforcast(data, container) {
+  // Lấy label để hiển thị (có sub/superscript Unicode)
+  const select = document.getElementById("wq_param");
+  const displayName = select.options[select.selectedIndex].text; 
+
+  // Lấy dữ liệu trả về như cũ
   const { forecast_next: forecast, history_dates: dates, wq_series_avg: values } = data.forecasted_wqi;
 
+  // Tìm ngày cuối của lịch sử
   const lastDate = new Date(dates[dates.length - 1]);
   lastDate.setDate(1);
   lastDate.setHours(0, 0, 0, 0);
 
+  // Hàm tính ngày 1 của n tháng tiếp theo
   const nextMonthOn1st = (date, months) => {
     const d = new Date(date);
     d.setMonth(d.getMonth() + months);
@@ -55,77 +61,92 @@ function displayforcast(data, container) {
     return d;
   };
 
+  // Hàm format YYYY‑MM‑DD
   const formatDateLocal = (date) => {
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
+    const year  = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day   = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
 
+  // Chuẩn bị 12 nhãn tháng
   const labels = Array.from({ length: 12 }, (_, i) => `${i + 1}_month`);
+  // Tính mảng ngày dự báo
   const forecastDates = labels.map((_, i) => nextMonthOn1st(lastDate, i + 1));
 
+  // Lấy mảng giá trị, lower/upper bound
   const forecastValues = labels.map(key => forecast[key].wqi);
-  const forecastLower = labels.map(key => forecast[key].lower_bound);
-  const forecastUpper = labels.map(key => forecast[key].upper_bound);
+  const forecastLower  = labels.map(key => forecast[key].lower_bound);
+  const forecastUpper  = labels.map(key => forecast[key].upper_bound);
 
-  container.innerHTML = `<div id="wqi-history-chart" style="height: 600px; margin-top: 20px;"></div>`;
+  // Reset container và chèn div chart
+  container.innerHTML = `<div id="wqi-history-chart" style="height:600px; margin-top:20px;"></div>`;
 
+  // Trace vùng CI
   const traceCI = {
-    x: [...forecastDates.map(formatDateLocal), ...forecastDates.map(formatDateLocal).reverse()],
-    y: [...forecastUpper, ...forecastLower.slice().reverse()],
+    x: [
+      ...forecastDates.map(formatDateLocal),
+      ...forecastDates.map(formatDateLocal).reverse()
+    ],
+    y: [
+      ...forecastUpper,
+      ...forecastLower.slice().reverse()
+    ],
     fill: 'toself',
-    fillcolor: 'rgba(0, 255, 255, 0.4)',
-    line: { color: 'rgba(255, 255, 255, 0)' },
-    name: 'Khoảng tin cậy',
+    fillcolor: 'rgba(0,255,255,0.4)',
+    line: { color: 'rgba(255,255,255,0)' },
+    name: 'Confidence Interval',
     type: 'scatter',
     hoverinfo: 'skip'
   };
-  
+
+  // Trace lịch sử
   const traceHistory = {
     x: dates,
     y: values,
     mode: 'lines+markers',
-    name: 'History WQI',
+    name: `${displayName} history`,      // <-- động
     line: { color: 'navy', width: 2 },
     marker: { size: 6 }
   };
 
+  // Trace dự báo
   const traceForecast = {
     x: forecastDates.map(formatDateLocal),
     y: forecastValues,
     mode: 'lines+markers',
-    name: 'Forecast WQI',
+    name: `${displayName} prediction`,   // <-- động
     line: { color: 'crimson', width: 2, dash: 'dash' },
     marker: { size: 8 }
   };
 
+  // Trace nối
   const traceConnect = {
-    x: [dates[dates.length - 1], formatDateLocal(forecastDates[0])],
-    y: [values[values.length - 1], forecastValues[0]],
+    x: [ dates.at(-1), formatDateLocal(forecastDates[0]) ],
+    y: [ values.at(-1), forecastValues[0] ],
     mode: 'lines',
     name: 'Nối lịch sử và dự báo',
     line: { color: 'crimson', width: 2, dash: 'dash' },
     showlegend: false,
     hoverinfo: 'skip'
   };
-  
-  // Thêm trace để tô màu khu vực nối giữa lịch sử và dự báo
+
+  // Trace vùng chuyển tiếp (tô màu nối 2 phần)
   const traceTransitionArea = {
     x: [
-      dates[dates.length - 1], // Điểm cuối của lịch sử
-      formatDateLocal(forecastDates[0]), // Điểm đầu của dự báo
-      formatDateLocal(forecastDates[0]), // Quay lại điểm đầu để đóng vùng
-      dates[dates.length - 1] // Quay lại điểm cuối của lịch sử
+      dates.at(-1),
+      formatDateLocal(forecastDates[0]),
+      formatDateLocal(forecastDates[0]),
+      dates.at(-1)
     ],
     y: [
-      values[values.length - 1], // Giá trị cuối của lịch sử
-      forecastUpper[0], // Giới hạn trên của dự báo
-      forecastLower[0], // Giới hạn dưới của dự báo
-      values[values.length - 1] // Quay lại giá trị cuối của lịch sử
+      values.at(-1),
+      forecastUpper[0],
+      forecastLower[0],
+      values.at(-1)
     ],
     fill: 'toself',
-    fillcolor: 'rgba(0, 255, 255, 0.4)',
+    fillcolor: 'rgba(0,255,255,0.4)',
     line: { color: 'transparent' },
     name: 'Khu vực nối',
     type: 'scatter',
@@ -133,41 +154,20 @@ function displayforcast(data, container) {
     showlegend: false
   };
 
-  // const traceHoverUpper = {
-  //   x: forecastDates.map(formatDateLocal),
-  //   y: forecastUpper,
-  //   mode: 'markers',
-  //   name: 'Giới hạn trên',
-  //   marker: { size: 1, color: 'rgba(255,127,14,0.01)' },
-  //   hovertemplate: 'Giới hạn trên: %{y:.2f}<extra></extra>',
-  //   showlegend: false
-  // };
-
-  // const traceHoverLower = {
-  //   x: forecastDates.map(formatDateLocal),
-  //   y: forecastLower,
-  //   mode: 'markers',
-  //   name: 'Giới hạn dưới',
-  //   marker: { size: 1, color: 'rgba(255,127,14,0.01)' },
-  //   hovertemplate: 'Giới hạn dưới: %{y:.2f}<extra></extra>',
-  //   showlegend: false
-  // };
-
+  // Layout với tiêu đề và trục Y động
   const layout = {
-    title: 'WQI forcasting chart',
+    title: `${displayName} prediction chart`,  // <-- động
     xaxis: {
       title: 'Date',
       type: 'date',
       tickformat: '%d/%m/%Y',
       tickangle: -45,
-      tickfont: { size: 15 }
+      tickfont: { size: 14 }
     },
     yaxis: {
-      title: 'WQI Value',
-      rangemode: 'auto',
-      // autorange: true,
+      title: `${displayName} Value`,            // <-- động
       range: [0, 105],
-      tickfont: { size: 15 }
+      tickfont: { size: 14 }
     },
     margin: { t: 60, l: 60, r: 30, b: 100 },
     responsive: true
@@ -178,9 +178,6 @@ function displayforcast(data, container) {
     traceCI,
     traceConnect,
     traceHistory,
-    traceForecast,
-    // traceHoverUpper,
-    // traceHoverLower,
-     // Giữ trace khu vực nối
+    traceForecast
   ], layout);
 }
