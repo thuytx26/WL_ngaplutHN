@@ -107,7 +107,7 @@ document.addEventListener("DOMContentLoaded", function () {
       mainContent.innerHTML = `
           <div class="main-container" style="min-height: calc(100vh - 100px); display: flex; flex-direction: column;">
               <section class="wqi-form-container centered-container">
-                  <h2>Water quality forecasting</h2>
+                  <h2>Water quality prediction</h2>
                   <hr class="section-header-divider" />
                   <input id="search-input" type="text" placeholder="Enter address" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
                   <div id="map" style="height: 600px; width: 1260px; margin: 10px auto; position: relative; z-index: 1; border: 2px solid #2B689C;"></div>
@@ -128,13 +128,56 @@ document.addEventListener("DOMContentLoaded", function () {
                             <label for="wq_param">Choose a param:</label>
                           <div class="input-with-buttons">
                             <select id="wq_param" name="wq_param" default="wqi">
-                                <option value="wqi">WQI</option>
-                                <option value="bod5">BOD5</option>
-                                <option value="cod">cod</option>
+                            <option value="wqi">WQI</option>
+
+                            <!-- Nhóm I -->
+                            <optgroup label="Nhóm I">
+                                <option value="ph">pH</option>
+                            </optgroup>
+
+                            <!-- Nhóm II: Pesticides -->
+                            <optgroup label="Nhóm II: Pesticides">
+                                <option value="aldrin">Aldrin</option>
+                                <option value="bhc">BHC</option>
+                                <option value="dieldrin">Dieldrin</option>
+                                <option value="ddts">DDTs (p,p′‑DDT &amp; p,p′‑DDE)</option>
+                                <option value="heptachlor">Heptachlor & Heptachlorepoxide</option>
+                            </optgroup>
+
+                            <!-- Nhóm III: Heavy metals -->
+                            <optgroup label="Nhóm III: Heavy metals">
+                                <option value="as">As</option>
+                                <option value="cd">Cd</option>
+                                <option value="pb">Pb</option>
+                                <option value="cr6">Cr⁶⁺</option>
+                                <option value="cu">Cu</option>
+                                <option value="zn">Zn</option>
+                                <option value="hg">Hg</option>
+                            </optgroup>
+
+                            <!-- Nhóm IV: Organic & Nutrients -->
+                            <optgroup label="Nhóm IV: Organic &amp; Nutrients">
+                                <option value="do">DO</option>
+                                <option value="bod5">BOD₅</option>
+                                <option value="cod">COD</option>
+                                <option value="toc">TOC</option>
+                                <option value="n_nh4">N–NH₄</option>
+                                <option value="n_no3">N–NO₃</option>
+                                <option value="n_no2">N–NO₂</option>
+                                <option value="p_po4">P–PO₄</option>
+                            </optgroup>
+
+                            <!-- Nhóm V: Microbiological -->
+                            <optgroup label="Nhóm V: Microbiological">
+                                <option value="coliform">Coliform</option>
+                                <option value="ecoli">E. coli</option>
+                            </optgroup>
                             </select>
                           </div>
                         </div>
-                      <button type="submit" class="submit">🚀 Predict</button>
+                        <div class="form-actions">
+                            <button type="submit" class="submit">🚀 Predict with AI</button>
+                        </div>
                   </form>
                   <div id="predict-result" style="margin-top: 20px; position: relative; z-index: 500; flex-grow: 1; width: 100%;">
                   </div>
@@ -262,7 +305,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   })
                   .catch((error) => {
                       console.error("Lỗi geocoding:", error);
-                      predictResult.innerHTML = "<p style='color: red;'>Lỗi kết nối dịch vụ định vị! Vui lòng kiểm tra kết nối mạng hoặc thử lại sau.</p>";
+                      predictResult.innerHTML = "<p style='color: blue;'>Nhấp chuột vào vị trí cần dự đoán.</p>";
                       longitudeInput.value = "";
                       latitudeInput.value = "";
                   });
