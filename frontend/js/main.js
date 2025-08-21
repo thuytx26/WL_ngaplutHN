@@ -28,9 +28,10 @@ document.addEventListener("DOMContentLoaded", function () {
           }
       }).setView([initialLat, initialLon], zoom);
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: '© OpenStreetMap contributors'
-      }).addTo(map);
+        var googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>'
+        }).addTo(map);
 
       setTimeout(() => {
           map.invalidateSize();
@@ -196,6 +197,28 @@ document.addEventListener("DOMContentLoaded", function () {
       const predictResult = document.getElementById("predict-result");
 
       // Tải và hiển thị GeoJSON
+        fetch('/assets/data/vietnam.geojson')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(geojson_data => {
+                L.geoJSON(geojson_data, {
+                    style: function(feature) {
+                        return {
+                            color: "gray", 
+                            weight: 2, 
+                            opacity: 1, 
+                            fillColor: "lightblue", 
+                            fillOpacity: 0.3 
+                        };
+                    }
+                }).addTo(map);
+            })
+            .catch(error => console.error('Lỗi khi tải hoặc xử lý GeoJSON:', error));
+
       fetch('assets/Ranhgioi_5721_wqi.geojson')
           .then(response => {
               if (!response.ok) {
@@ -211,7 +234,7 @@ document.addEventListener("DOMContentLoaded", function () {
               geojsonLayer = L.geoJSON(geojsonData, {
                   style: function (feature) {
                       return {
-                          color: "#007bff",
+                          color: "gray",
                           weight: 3,
                           opacity: 1,
                           fillColor: "transparent",
