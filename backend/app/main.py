@@ -70,7 +70,7 @@ class ForcastWQIInput(BaseModel):
     latitude: float
     wq_param: str
 
-df4forcast = pd.read_csv("app/features/vnwqi_forcasting/data/wqi_prepared.csv")
+df4forcast = pd.read_csv("app/features/vnwqi_forcasting/data/wqi_prepared_new.csv")
 
 @app.post("/forcast_wqi")
 async def forecast_wqi(input_data: ForcastWQIInput):

@@ -166,7 +166,7 @@ function displayforcast(data, container) {
     },
     yaxis: {
       title: `${displayName} Value`,            // <-- động
-      range: [0, 105],
+      // range: [0, 105],
       tickfont: { size: 14 }
     },
     margin: { t: 60, l: 60, r: 30, b: 100 },

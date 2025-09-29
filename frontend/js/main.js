@@ -131,13 +131,13 @@ document.addEventListener("DOMContentLoaded", function () {
                             <select id="wq_param" name="wq_param" default="wqi">
                             <option value="wqi">WQI</option>
 
-                            <!-- Nhóm I -->
-                            <optgroup label="Nhóm I">
+                            <!-- Group I -->
+                            <optgroup label="Group I">
                                 <option value="ph">pH</option>
                             </optgroup>
 
-                            <!-- Nhóm II: Pesticides -->
-                            <optgroup label="Nhóm II: Pesticides">
+                            <!-- Group II: Pesticides -->
+                            <optgroup label="Group II: Pesticides">
                                 <option value="aldrin">Aldrin</option>
                                 <option value="bhc">BHC</option>
                                 <option value="dieldrin">Dieldrin</option>
@@ -145,8 +145,8 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <option value="heptachlor">Heptachlor & Heptachlorepoxide</option>
                             </optgroup>
 
-                            <!-- Nhóm III: Heavy metals -->
-                            <optgroup label="Nhóm III: Heavy metals">
+                            <!-- Group III: Heavy metals -->
+                            <optgroup label="Group III: Heavy metals">
                                 <option value="as">As</option>
                                 <option value="cd">Cd</option>
                                 <option value="pb">Pb</option>
@@ -156,8 +156,8 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <option value="hg">Hg</option>
                             </optgroup>
 
-                            <!-- Nhóm IV: Organic & Nutrients -->
-                            <optgroup label="Nhóm IV: Organic &amp; Nutrients">
+                            <!-- Group IV: Organic & Nutrients -->
+                            <optgroup label="Group IV: Organic &amp; Nutrients">
                                 <option value="do">DO</option>
                                 <option value="bod5">BOD₅</option>
                                 <option value="cod">COD</option>
@@ -168,8 +168,8 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <option value="p_po4">P–PO₄</option>
                             </optgroup>
 
-                            <!-- Nhóm V: Microbiological -->
-                            <optgroup label="Nhóm V: Microbiological">
+                            <!-- Group V: Microbiological -->
+                            <optgroup label="Group V: Microbiological">
                                 <option value="coliform">Coliform</option>
                                 <option value="ecoli">E. coli</option>
                             </optgroup>
