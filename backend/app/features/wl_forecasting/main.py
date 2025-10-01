@@ -9,5 +9,5 @@ def forecast(longitude: float, latitude: float, df4forcast: pd.DataFrame) -> flo
     wq_series = avg_by_codes(nearest_codes, df4forcast)
     # dự báo giá trị trong tương lai -> trích xuất n giá trị tiếp theo vì dữ liệu đã được dự báo sẵn
     from app.features.wl_forecasting.src.extract_forcast_value import extract_forcast_value
-    historical_data, forecast_result = extract_forcast_value(wq_series, n=24)
+    historical_data, forecast_result = extract_forcast_value(wq_series, n=24*7)
     return nearest_codes, historical_data, forecast_result

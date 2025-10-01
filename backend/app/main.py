@@ -87,7 +87,7 @@ async def forecast_wqi(input_data: ForcastWQIInput):
         raise HTTPException(status_code=500, detail=f"Error while processing data: {str(e)}")
     
 
-df4forcast_wl = pd.read_csv("app/features/wl_forecasting/data/hourly_data.csv")
+df4forcast_wl = pd.read_csv("app/features/wl_forecasting/data/mucnuoc_merged_2025Q4_hourly.csv")
 
 class ForcastWLInput(BaseModel):
     longitude: float

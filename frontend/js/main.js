@@ -176,11 +176,24 @@ document.addEventListener("DOMContentLoaded", function () {
                             </select>
                           </div>
                         </div>
+<div class="form-group">
+  <label><!-- để trống giữ cột label --></label>
+  <div class="form-cell-right">
+    <label class="wl-switch" for="WLCheckbox">
+      <input type="checkbox" id="WLCheckbox" />
+      <span class="wl-switch-track"><span class="wl-switch-thumb"></span></span>
+      <span class="wl-switch-text">Water level</span>
+    </label>
+  </div>
+</div>
+
                         <div class="form-actions">
                             <button type="submit" class="submit">🚀 Predict with AI</button>
                         </div>
                   </form>
                   <div id="predict-result" style="margin-top: 20px; position: relative; z-index: 500; flex-grow: 1; width: 100%;">
+                  </div>
+                  <div id="wl-forecast" class="result-card" style="margin-top: 20px; position: relative; z-index: 500; flex-grow: 1; width: 100%;">
                   </div>
               </section>
           </div>
