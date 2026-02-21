@@ -274,12 +274,12 @@ function displayWLForecast(result, container) {
       // Cảnh báo ngập (màu đỏ)
       alertHTML = `
         <div style="background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; border: 1px solid #f5c6cb; margin-bottom: 20px;">
-          <h4 style="margin-top: 0; margin-bottom: 10px;">⚠️ CẢNH BÁO NGẬP LỤT</h4>
+          <h4 style="margin-top: 0; margin-bottom: 10px;">Vị trí dự báo</h4>
           <ul style="margin-bottom: 0; padding-left: 20px;">
-            <li>Cao độ nền (DEM): <strong>${dem_value.toFixed(2)} cm</strong></li>
-            <li>Mực nước dự báo cao nhất: <strong>${maxWL.toFixed(2)} cm</strong></li>
+            <li>Cao độ nền (DEM) ~ <strong>${dem_value.toFixed(2)} m</strong></li>
+            <li>Mực nước cảnh báo cao nhất ứng với cường độ mưa: <strong>${maxWL.toFixed(2)} m</strong></li>
             <li style="font-size: 1.1em; margin-top: 5px;">
-              👉 Độ sâu ngập dự kiến: <strong style="color: #dc3545; font-size: 1.3em;">${floodDepth.toFixed(2)} cm</strong>
+              👉 Độ sâu ngập cảnh báo khoảng: <strong style="color: #dc3545; font-size: 1.3em;">${floodDepth.toFixed(2)} m</strong>
             </li>
           </ul>
         </div>
@@ -288,10 +288,10 @@ function displayWLForecast(result, container) {
       // Thông báo an toàn (màu xanh)
       alertHTML = `
         <div style="background-color: #d4edda; color: #155724; padding: 15px; border-radius: 8px; border: 1px solid #c3e6cb; margin-bottom: 20px;">
-          <h4 style="margin-top: 0; margin-bottom: 10px;">✅ KHU VỰC AN TOÀN</h4>
+          <h4 style="margin-top: 0; margin-bottom: 10px;">Vị trí dự báo</h4>
           <p style="margin-bottom: 0;">
-            Cao độ nền (<strong>${dem_value.toFixed(2)} cm</strong>) cao hơn mực nước dự báo lớn nhất (<strong>${maxWL.toFixed(2)} cm</strong>).<br>
-            Dự kiến không xảy ra ngập lụt.
+            Cao độ nền (<strong>${dem_value.toFixed(2)} m</strong>) cao hơn mực nước dự báo lớn nhất (<strong>${maxWL.toFixed(2)} m</strong>).<br>
+            Điểm này dự báo không ngập ứng với cường độ mưa.
           </p>
         </div>
       `;
@@ -330,7 +330,7 @@ function displayWLForecast(result, container) {
     name: 'WL history',
     line: { color: 'navy', width: 2 },
     marker: { size: 5 },
-    hovertemplate: '%{x}<br>WL: %{y:.2f} cm<extra>History</extra>',
+    hovertemplate: '%{x}<br>WL: %{y:.2f} m<extra>History</extra>',
   };
 
   const traceForecast = {
@@ -340,7 +340,7 @@ function displayWLForecast(result, container) {
     name: 'WL prediction',
     line: { color: 'crimson', width: 2, dash: 'dash' },
     marker: { size: 6 },
-    hovertemplate: '%{x}<br>WL: %{y:.2f} cm<extra>Predict</extra>',
+    hovertemplate: '%{x}<br>WL: %{y:.2f} m<extra>Predict</extra>',
   };
 
   // Vẽ thêm 1 đường nét đứt màu xanh lá cây thể hiện mặt đất (DEM)
@@ -350,7 +350,7 @@ function displayWLForecast(result, container) {
     mode: 'lines',
     name: 'Đường mặt đất (DEM)',
     line: { color: 'green', width: 2, dash: 'dot' },
-    hovertemplate: 'Mặt đất: %{y:.2f} cm<extra></extra>'
+    hovertemplate: 'Mặt đất: %{y:.2f} m<extra></extra>'
   } : null;
 
   const connectTrace = (hist.times.length && fc.times.length)
@@ -366,10 +366,12 @@ function displayWLForecast(result, container) {
     : [];
 
   const now = new Date();
-  const spanDays = 5;
-  const ms = spanDays * 24 * 60 * 60 * 1000;
-  const xStart = new Date(now.getTime() - ms);
-  const xEnd   = new Date(now.getTime() + ms);
+  // Tính số mili-giây cho 3 giờ và 25 giờ
+  const msPast = 3 * 60 * 60 * 1000;  // 3 giờ trước
+  const msFuture = 25 * 60 * 60 * 1000; // 25 giờ sau
+
+  const xStart = new Date(now.getTime() - msPast);
+  const xEnd   = new Date(now.getTime() + msFuture);
 
   const layout = {
     title: 'Water Level Prediction Chart',
@@ -381,7 +383,7 @@ function displayWLForecast(result, container) {
       autorange: false,
     },
     yaxis: {
-      title: 'Water Level / Elevation (cm)',
+      title: 'Water Level / Elevation (m)',
       range: [plotMin - pad, plotMax + pad],
       zeroline: true
     },
