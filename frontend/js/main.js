@@ -125,9 +125,32 @@ document.addEventListener("DOMContentLoaded", function () {
                               <input name="latitude" id="latitude" type="number" step="any" value="" required />
                           </div>
                       </div>
-                      <div class="form-group">
-                            <label for="wq_param">Choose a param:</label>
-                          <div class="input-with-buttons">
+                    <div class="form-group">
+                        <label for="rainfall" style="font-weight: 600;">Precipitation (mm):</label>
+                        <div class="input-with-buttons">
+                            <input 
+                                name="rainfall" 
+                                id="rainfall" 
+                                type="number" 
+                                step="5" 
+                                value="0" 
+                                min="0" 
+                                oninput="this.value = Math.abs(this.value)"
+                                placeholder="Nhập cường độ mưa..." 
+                                style="width: 400px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px;" 
+                                required 
+                            />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; margin-bottom: 0;">
+                            <label class="wl-switch" for="WQICheckbox" style="margin-bottom: 0;">
+                                <input type="checkbox" id="WQICheckbox" />
+                                <span class="wl-switch-track"><span class="wl-switch-thumb"></span></span>
+                                <span class="wl-switch-text" style="font-weight: bold;">Water Quality</span>
+                            </label>
+                        </label>
+                        <div class="input-with-buttons">
                             <select id="wq_param" name="wq_param" default="wqi">
                             <option value="wqi">WQI</option>
 
@@ -176,24 +199,14 @@ document.addEventListener("DOMContentLoaded", function () {
                             </select>
                           </div>
                         </div>
-<div class="form-group">
-  <label><!-- để trống giữ cột label --></label>
-  <div class="form-cell-right">
-    <label class="wl-switch" for="WLCheckbox">
-      <input type="checkbox" id="WLCheckbox" />
-      <span class="wl-switch-track"><span class="wl-switch-thumb"></span></span>
-      <span class="wl-switch-text">Water level</span>
-    </label>
-  </div>
-</div>
 
                         <div class="form-actions">
                             <button type="submit" class="submit">🚀 Predict with AI</button>
                         </div>
                   </form>
-                  <div id="predict-result" style="margin-top: 20px; position: relative; z-index: 500; flex-grow: 1; width: 100%;">
-                  </div>
                   <div id="wl-forecast" class="result-card" style="margin-top: 20px; position: relative; z-index: 500; flex-grow: 1; width: 100%;">
+                  </div>
+                  <div id="predict-result" style="margin-top: 20px; position: relative; z-index: 500; flex-grow: 1; width: 100%;">
                   </div>
               </section>
           </div>
@@ -260,7 +273,49 @@ document.addEventListener("DOMContentLoaded", function () {
               console.error("Error loading GeoJSON:", error);
               predictResult.innerHTML = `<p style='color: red;'>❌ Lỗi khi tải dữ liệu khu vực hợp lệ: ${error.message}</p>`;
           });
+// ========================================================
+      // ĐỌC FILE CSV VÀ VẼ CÁC TRẠM LÊN BẢN ĐỒ
+      // ========================================================
+      // Thay đường dẫn này bằng đường dẫn tới file CSV thực tế của bạn
+      const CSV_URL = 'assets/data/cong_trinh_muc_nuoc_co_du_lieu.csv'; 
 
+      fetch(CSV_URL)
+          .then(response => {
+              if (!response.ok) throw new Error("Không thể tải file CSV trạm");
+              return response.text(); // Đọc dữ liệu dưới dạng text thay vì json
+          })
+          .then(csvText => {
+              // Tách các dòng dựa vào ký tự xuống dòng
+              const lines = csvText.trim().split('\n');
+              
+              // Bỏ qua dòng đầu tiên (dòng tiêu đề), bắt đầu chạy từ dòng 1
+              for (let i = 1; i < lines.length; i++) {
+                  const cols = lines[i].split(',');
+
+                  // Đảm bảo dòng có đủ dữ liệu (ít nhất 6 cột để lấy e và n)
+                  if (cols.length >= 6) {
+                      const stName = cols[1].trim();              // Cột Tên
+                      const stLon = parseFloat(cols[4].trim());   // Cột 'e' (Kinh độ)
+                      const stLat = parseFloat(cols[5].trim());   // Cột 'n' (Vĩ độ)
+
+                      // Nếu tọa độ hợp lệ thì tiến hành vẽ
+                      if (!isNaN(stLat) && !isNaN(stLon)) {
+                          L.circleMarker([stLat, stLon], {
+                              radius: 5,           // Kích thước chấm tròn
+                              fillColor: "#ff0000",// Màu nền đỏ
+                              color: "#ffffff",    // Viền trắng
+                              weight: 1,           
+                              opacity: 1,
+                              fillOpacity: 0.8
+                          })
+                          .addTo(map)
+                          .bindTooltip(`<b>${stName}</b>`); // Hiện tên trạm khi di chuột vào
+                      }
+                  }
+              }
+          })
+          .catch(error => console.warn("Lỗi xử lý trạm CSV:", error));
+      // ========================================================
       // Thêm sự kiện click vào bản đồ
       map.on('click', function (e) {
           const lat = e.latlng.lat;

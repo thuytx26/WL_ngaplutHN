@@ -1,5 +1,5 @@
 import pandas as pd
-def forecast(longitude: float, latitude: float, df4forcast: pd.DataFrame) -> float:
+def forecast(longitude: float, latitude: float, rainfall: int, df4forcast: pd.DataFrame, df_rainfall:pd.DataFrame) -> float:
     # find k nearest points
     from app.features.wl_forecasting.src.knn import find_k_nearest
     nearest_points = find_k_nearest(longitude, latitude, df4forcast, k=3)
@@ -9,5 +9,5 @@ def forecast(longitude: float, latitude: float, df4forcast: pd.DataFrame) -> flo
     wq_series = avg_by_codes(nearest_codes, df4forcast)
     # dự báo giá trị trong tương lai -> trích xuất n giá trị tiếp theo vì dữ liệu đã được dự báo sẵn
     from app.features.wl_forecasting.src.extract_forcast_value import extract_forcast_value
-    historical_data, forecast_result = extract_forcast_value(wq_series, n=24*7)
+    historical_data, forecast_result = extract_forcast_value(wq_series, rainfall, df_rainfall, n=24*7)
     return nearest_codes, historical_data, forecast_result

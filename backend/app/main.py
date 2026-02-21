@@ -7,6 +7,7 @@ from app.features.vnwqi_prediction.main import predict
 from app.features.vnwqi_prediction.levels import wqi_level, wqi_color
 from app.features.vnwqi_forcasting.main import forecast
 from app.features.wl_forecasting.main import forecast as forecast_water_level
+from app.features.wl_forecasting.src.cal import get_elevation
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
@@ -87,23 +88,34 @@ async def forecast_wqi(input_data: ForcastWQIInput):
         raise HTTPException(status_code=500, detail=f"Error while processing data: {str(e)}")
     
 
-df4forcast_wl = pd.read_csv("app/features/wl_forecasting/data/mucnuoc_merged_2025Q4_hourly.csv")
+df4forcast_wl = pd.read_csv("app/features/wl_forecasting/data/tram_do_tu_dong_processed_hourly.csv")
+df_rainfall = pd.read_csv("app/features/wl_forecasting/data/cuongdomua.csv", index_col=0)
+
 
 class ForcastWLInput(BaseModel):
     longitude: float
     latitude: float
+    rainfall: int = 0
 
 @app.post("/forcast_wl")
 async def forecast_wl(input_data: ForcastWLInput):
     try:
-        nearest_codes, historical_data, forecasted_wl = forecast_water_level(input_data.longitude,
-                                            input_data.latitude,
-                                            df4forcast=df4forcast_wl)
+        nearest_codes, historical_data, forecasted_wl = forecast_water_level(
+            input_data.longitude,
+            input_data.latitude,
+            input_data.rainfall,
+            df4forcast=df4forcast_wl,
+            df_rainfall=df_rainfall,
+            )
+        dem_val = get_elevation(input_data.latitude, input_data.longitude)
+        if dem_val is not None:
+            dem_val = dem_val * 100
         return {
             "nearest_codes": nearest_codes,
             'data':{
             "historical_data": historical_data,
-            "forecasted_wl": forecasted_wl
+            "forecasted_wl": forecasted_wl,
+            "dem_value": dem_val
             }
         }
     except Exception as e:

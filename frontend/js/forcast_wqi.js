@@ -2,75 +2,80 @@ import { BASE_API_URL } from "./config.js";
 
 export function initforcastWQI() {
   const form = document.getElementById("wqi-location-form");
-  const resultBox = document.getElementById("predict-result");
+  const resultBox = document.getElementById("predict-result"); // Output cho WQI
+  const wlBox = document.getElementById("wl-forecast") || resultBox; // Output cho Water Level
 
-  const wlSwitch = document.getElementById("WLCheckbox");
-  const wlBox = document.getElementById("wl-forecast") || resultBox;
-
-  wlSwitch?.addEventListener("change", () => {
-    if (!wlSwitch.checked) wlBox.innerHTML = "";
+  const wqiSwitch = document.getElementById("WQICheckbox");
+  const wqParamSelect = document.getElementById("wq_param");
+  wqParamSelect.disabled = true;
+  wqParamSelect.style.backgroundColor = "#e9ecef";
+  // Logic bật/tắt của chức năng WQI
+  wqiSwitch?.addEventListener("change", () => {
+    wqParamSelect.disabled = !wqiSwitch.checked;
+    wqParamSelect.style.backgroundColor = wqiSwitch.checked ? "#fff" : "#e9ecef"; 
+    if (!wqiSwitch.checked) {
+      resultBox.innerHTML = ""; // Xóa chart WQI nếu tắt
+    }
   });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    // (2) Mỗi lần submit, nếu switch đang OFF thì xoá nội dung cũ của WL
-    if (!wlSwitch.checked) wlBox.innerHTML = "";
+    // Reset giao diện trước khi nạp dữ liệu mới
+    if (!wqiSwitch.checked) resultBox.innerHTML = "";
+    wlBox.innerHTML = `<p>⏳ Đang xử lý dự báo mực nước...</p>`;
 
+    // Gom dữ liệu từ form
     const formData = new FormData(form);
     const payload = {};
     formData.forEach((value, key) => {
-      if (key !== 'wq_param') {
+      if (key !== 'wq_param' && value !== "") {
         payload[key] = parseFloat(value);
       } else {
         payload[key] = value;
       }
     });
 
-    const payloadWL = { latitude: payload.latitude, longitude: payload.longitude };
-
-
-    resultBox.innerHTML = `<p>⏳ Đang xử lý...</p>`;
-
+    // ==========================================
+    // 1. LUÔN DỰ BÁO WATER LEVEL (MẶC ĐỊNH)
+    // ==========================================
     try {
-      const response = await fetch(`${BASE_API_URL}/forcast_wqi`, {
+      const payloadWL = { 
+        latitude: payload.latitude, 
+        longitude: payload.longitude,
+        rainfall: payload.rainfall // Truyền lượng mưa vào API
+      };
+
+      const responseWL = await fetch(`${BASE_API_URL}/forcast_wl`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payloadWL)
       });
 
-      if (!response.ok) {
-        const err = await response.text();
-        throw new Error(err);
-      }
-
-      const result = await response.json();
-      // truyền nguyên như cũ, nhưng bên trong displayforcast sẽ tự đọc param
-      displayforcast(result, resultBox);
+      if (!responseWL.ok) throw new Error(await responseWL.text());
+      const resultWL = await responseWL.json();
+      displayWLForecast(resultWL, wlBox);
     } catch (error) {
-      resultBox.innerHTML = `<p style="color:red">❌ Lỗi: ${error.message}</p>`;
+      wlBox.innerHTML = `<p style="color:red">❌ Lỗi dự báo mực nước: ${error.message}</p>`;
     }
 
-    // Xử lý tương tự cho dự báo mực nước
-    if (wlSwitch.checked) {
-      wlBox.innerHTML = `<p>⏳ Đang xử lý dự báo mực nước...</p>`;
+    // ==========================================
+    // 2. CHỈ DỰ BÁO WATER QUALITY NẾU CẦN GẠT BẬT
+    // ==========================================
+    if (wqiSwitch.checked) {
+      resultBox.innerHTML = `<p>⏳ Đang xử lý dự báo Water Quality...</p>`;
       try {
-        const responseWL = await fetch(`${BASE_API_URL}/forcast_wl`, {
+        const response = await fetch(`${BASE_API_URL}/forcast_wqi`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payloadWL)
+          body: JSON.stringify(payload)
         });
 
-        if (!responseWL.ok) {
-          const err = await responseWL.text();
-          throw new Error(err);
-        }
-
-        // dùng hàm displayWLForecast để vẽ biểu đồ
-        const resultWL = await responseWL.json();
-        displayWLForecast(resultWL, wlBox);
+        if (!response.ok) throw new Error(await response.text());
+        const result = await response.json();
+        displayforcast(result, resultBox);
       } catch (error) {
-        wlBox.innerHTML = `<p style="color:red">❌ Lỗi dự báo mực nước: ${error.message}</p>`;
+        resultBox.innerHTML = `<p style="color:red">❌ Lỗi dự báo WQI: ${error.message}</p>`;
       }
     }
   });
@@ -222,6 +227,8 @@ function displayforcast(data, container) {
 // Vẽ Water Level forecast bằng Plotly
 // result: object trả về từ /forcast_wl (như bạn gửi)
 // container: phần tử DOM để render (vd: document.getElementById('wl-forecast'))
+// frontend/js/forcast_wqi.js
+
 function displayWLForecast(result, container) {
   if (!result || !result.data) {
     container.innerHTML = `<p style="color:red">Không có dữ liệu để vẽ.</p>`;
@@ -229,9 +236,10 @@ function displayWLForecast(result, container) {
   }
 
   const { data } = result;
-  const { historical_data = {}, forecasted_wl = {} } = data;
+  
+  // 1. Lấy biến dem_value từ backend trả về (đảm bảo tên biến khớp với backend)
+  const { historical_data = {}, forecasted_wl = {}, dem_value } = data;
 
-  // Chuyển dict -> mảng đã sắp xếp theo thời gian
   const parseSeries = (obj) => {
     const entries = Object.entries(obj || {});
     entries.sort((a, b) => new Date(a[0]) - new Date(b[0]));
@@ -248,17 +256,73 @@ function displayWLForecast(result, container) {
     return;
   }
 
-  // Tạo div chart riêng, tránh đụng id
-  const chartId = `wl-history-chart-${Date.now()}`;
-  container.innerHTML = `<div id="${chartId}" style="height:520px;"></div>`;
+  // ========================================================
+  // 2. TÍNH TOÁN VÀ HIỂN THỊ THÔNG BÁO NGẬP LỤT
+  // ========================================================
+  let alertHTML = "";
+  
+  // Kiểm tra xem backend có trả về dem_value hợp lệ không
+  if (fc.vals.length > 0 && dem_value !== undefined && dem_value !== null) {
+    
+    // Tìm giá trị mực nước dự báo cao nhất
+    const maxWL = Math.max(...fc.vals.filter(v => v !== null));
+    
+    // Tính toán độ ngập (Lưu ý: Đảm bảo maxWL và dem_value cùng đơn vị, ví dụ cùng là cm)
+    const floodDepth = maxWL - dem_value;
 
-  // Tìm min/max cho y, có đệm 10%
+    if (floodDepth > 0) {
+      // Cảnh báo ngập (màu đỏ)
+      alertHTML = `
+        <div style="background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; border: 1px solid #f5c6cb; margin-bottom: 20px;">
+          <h4 style="margin-top: 0; margin-bottom: 10px;">⚠️ CẢNH BÁO NGẬP LỤT</h4>
+          <ul style="margin-bottom: 0; padding-left: 20px;">
+            <li>Cao độ nền (DEM): <strong>${dem_value.toFixed(2)} cm</strong></li>
+            <li>Mực nước dự báo cao nhất: <strong>${maxWL.toFixed(2)} cm</strong></li>
+            <li style="font-size: 1.1em; margin-top: 5px;">
+              👉 Độ sâu ngập dự kiến: <strong style="color: #dc3545; font-size: 1.3em;">${floodDepth.toFixed(2)} cm</strong>
+            </li>
+          </ul>
+        </div>
+      `;
+    } else {
+      // Thông báo an toàn (màu xanh)
+      alertHTML = `
+        <div style="background-color: #d4edda; color: #155724; padding: 15px; border-radius: 8px; border: 1px solid #c3e6cb; margin-bottom: 20px;">
+          <h4 style="margin-top: 0; margin-bottom: 10px;">✅ KHU VỰC AN TOÀN</h4>
+          <p style="margin-bottom: 0;">
+            Cao độ nền (<strong>${dem_value.toFixed(2)} cm</strong>) cao hơn mực nước dự báo lớn nhất (<strong>${maxWL.toFixed(2)} cm</strong>).<br>
+            Dự kiến không xảy ra ngập lụt.
+          </p>
+        </div>
+      `;
+    }
+  } else if (dem_value === undefined || dem_value === null) {
+      alertHTML = `
+        <div style="background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 8px; border: 1px solid #ffeeba; margin-bottom: 20px;">
+          ℹ️ Không lấy được dữ liệu địa hình (DEM) tại vị trí này để tính toán ngập lụt.
+        </div>
+      `;
+  }
+  // ========================================================
+
+  // 3. Hiển thị thông báo + Biểu đồ
+  const chartId = `wl-history-chart-${Date.now()}`;
+  container.innerHTML = alertHTML + `<div id="${chartId}" style="height:520px;"></div>`;
+
+  // --- PHẦN CODE VẼ BIỂU ĐỒ BẰNG PLOTLY ---
   const allVals = [...hist.vals, ...fc.vals].filter(v => Number.isFinite(v));
   const yMin = allVals.length ? Math.min(...allVals) : 0;
   const yMax = allVals.length ? Math.max(...allVals) : 0;
-  const pad  = (yMax - yMin) * 0.1 || 10;
+  
+  // Mở rộng trục Y để hiển thị được cả đường DEM nếu cần
+  let plotMin = yMin;
+  let plotMax = yMax;
+  if (dem_value !== undefined && dem_value !== null) {
+      plotMin = Math.min(yMin, dem_value);
+      plotMax = Math.max(yMax, dem_value);
+  }
+  const pad = (plotMax - plotMin) * 0.1 || 10;
 
-  // Trace lịch sử
   const traceHistory = {
     x: hist.times,
     y: hist.vals,
@@ -266,10 +330,9 @@ function displayWLForecast(result, container) {
     name: 'WL history',
     line: { color: 'navy', width: 2 },
     marker: { size: 5 },
-    hovertemplate: '%{x}<br>WL: %{y:.2f}<extra>History</extra>',
+    hovertemplate: '%{x}<br>WL: %{y:.2f} cm<extra>History</extra>',
   };
 
-  // Trace dự báo
   const traceForecast = {
     x: fc.times,
     y: fc.vals,
@@ -277,10 +340,19 @@ function displayWLForecast(result, container) {
     name: 'WL prediction',
     line: { color: 'crimson', width: 2, dash: 'dash' },
     marker: { size: 6 },
-    hovertemplate: '%{x}<br>WL: %{y:.2f}<extra>Predict</extra>',
+    hovertemplate: '%{x}<br>WL: %{y:.2f} cm<extra>Predict</extra>',
   };
 
-  // Đường nối (nếu có cả 2 bên)
+  // Vẽ thêm 1 đường nét đứt màu xanh lá cây thể hiện mặt đất (DEM)
+  const traceDEM = (dem_value !== undefined && dem_value !== null && fc.times.length > 0) ? {
+    x: [hist.times[0] || fc.times[0], fc.times.at(-1)],
+    y: [dem_value, dem_value],
+    mode: 'lines',
+    name: 'Đường mặt đất (DEM)',
+    line: { color: 'green', width: 2, dash: 'dot' },
+    hovertemplate: 'Mặt đất: %{y:.2f} cm<extra></extra>'
+  } : null;
+
   const connectTrace = (hist.times.length && fc.times.length)
     ? [{
         x: [hist.times.at(-1), fc.times[0]],
@@ -293,23 +365,6 @@ function displayWLForecast(result, container) {
       }]
     : [];
 
-  // Nền mờ khu vực forecast (x-shape)
-  // const shapes = [];
-  // if (fc.times.length) {
-  //   shapes.push({
-  //     type: 'rect',
-  //     xref: 'x',
-  //     yref: 'paper',
-  //     x0: fc.times[0],
-  //     x1: fc.times.at(-1),
-  //     y0: 0,
-  //     y1: 1,
-  //     fillcolor: 'rgba(0, 150, 255, 0.08)',
-  //     line: { width: 0 }
-  //   });
-  // }
-
-  // Tạo khoảng hiển thị: từ now - 5 ngày đến now + 5 ngày
   const now = new Date();
   const spanDays = 5;
   const ms = spanDays * 24 * 60 * 60 * 1000;
@@ -317,7 +372,7 @@ function displayWLForecast(result, container) {
   const xEnd   = new Date(now.getTime() + ms);
 
   const layout = {
-    title: 'Water Level prediction chart',
+    title: 'Water Level Prediction Chart',
     xaxis: {
       title: 'Datetime',
       type: 'date',
@@ -326,20 +381,19 @@ function displayWLForecast(result, container) {
       autorange: false,
     },
     yaxis: {
-      title: 'Water Level (cm)',
-      range: [yMin - pad, yMax + pad],
+      title: 'Water Level / Elevation (cm)',
+      range: [plotMin - pad, plotMax + pad],
       zeroline: true
     },
     margin: { t: 60, l: 60, r: 20, b: 90 },
-    // shapes,
     legend: { orientation: 'h', x: 0, y: 1.08 },
   };
 
   const config = { responsive: true, displayModeBar: true };
 
-  Plotly.newPlot(chartId, [
-    ...connectTrace,
-    traceHistory,
-    traceForecast
-  ], layout, config);
+  // Đưa tất cả các nét vẽ vào mảng
+  const plotData = [...connectTrace, traceHistory, traceForecast];
+  if (traceDEM) plotData.push(traceDEM);
+
+  Plotly.newPlot(chartId, plotData, layout, config);
 }
