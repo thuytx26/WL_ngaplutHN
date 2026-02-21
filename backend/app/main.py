@@ -100,22 +100,19 @@ class ForcastWLInput(BaseModel):
 @app.post("/forcast_wl")
 async def forecast_wl(input_data: ForcastWLInput):
     try:
-        nearest_codes, historical_data, forecasted_wl = forecast_water_level(
+        nearest_codes, historical_data, forecasted_wl, dem_value = forecast_water_level(
             input_data.longitude,
             input_data.latitude,
             input_data.rainfall,
             df4forcast=df4forcast_wl,
             df_rainfall=df_rainfall,
             )
-        dem_val = get_elevation(input_data.latitude, input_data.longitude)
-        if dem_val is not None:
-            dem_val = dem_val * 100
         return {
             "nearest_codes": nearest_codes,
             'data':{
             "historical_data": historical_data,
             "forecasted_wl": forecasted_wl,
-            "dem_value": dem_val
+            "dem_value": dem_value
             }
         }
     except Exception as e:
