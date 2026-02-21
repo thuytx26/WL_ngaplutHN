@@ -16,16 +16,36 @@ RUN apt-get update && \
 # set working directory
 WORKDIR /app
 
-# copy requirements and install dependencies
-COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:0.8.17 /uv /uvx /bin/
+
+# Place executables in the environment at the front of the path
+# Ref: https://docs.astral.sh/uv/guides/integration/docker/#using-the-environment
+ENV PATH="/app/.venv/bin:$PATH"
+
+# https://docs.astral.sh/uv/guides/integration/docker/#compiling-bytecode
+ENV UV_COMPILE_BYTECODE=1
+
+# https://docs.astral.sh/uv/guides/integration/docker/#caching
+ENV UV_LINK_MODE=copy
+
+# https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project
 
 # copy the application code
-COPY app/ ./app
+COPY app/ /app/app
+
+COPY uv.lock pyproject.toml /app/
+
+# Sync the project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync
 
 # expose the port your app runs on
 EXPOSE 8000
 
 # start the FastAPI server with Uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["fastapi", "dev", "app/main.py", "--host", "0.0.0.0"]

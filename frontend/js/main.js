@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
   let geojsonLayer = null; // Biến để lưu trữ layer GeoJSON trên bản đồ
 
   // Hàm khởi tạo bản đồ
-  function initializeMap(containerId, initialLat = 10.5, initialLon = 105.5, zoom = 8) {
+  function initializeMap(containerId, initialLat = 21.02, initialLon = 105.83, zoom = 10) {
       if (map) {
           map.remove(); // Xóa bản đồ cũ nếu đã tồn tại
       }
@@ -108,7 +108,7 @@ document.addEventListener("DOMContentLoaded", function () {
       mainContent.innerHTML = `
           <div class="main-container" style="min-height: calc(100vh - 100px); display: flex; flex-direction: column;">
               <section class="wqi-form-container centered-container">
-                  <h2>Water quality prediction</h2>
+                  <h2>Water level prediction</h2>
                   <hr class="section-header-divider" />
                   <input id="search-input" type="text" placeholder="Enter address" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
                   <div id="map" style="height: 600px; width: 1260px; margin: 10px auto; position: relative; z-index: 1; border: 2px solid #2B689C;"></div>
@@ -200,7 +200,7 @@ document.addEventListener("DOMContentLoaded", function () {
       `;
 
       // Khởi tạo bản đồ với tọa độ DBSCL
-      map = initializeMap('map', 10.444598, 106.100464, 8);
+      map = initializeMap('map', 21.02, 105.83, 10);
 
       let marker;
 
