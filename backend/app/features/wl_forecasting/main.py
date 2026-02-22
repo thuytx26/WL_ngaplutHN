@@ -34,44 +34,55 @@ def forecast(longitude: float, latitude: float, rainfall: int, df4forcast: pd.Da
     from app.features.wl_forecasting.src.extract_forcast_value import extract_forcast_value
     historical_data, forecast_result = extract_forcast_value(wq_series, rainfall, df_rainfall, n=24*7)
     
-    # ==========================================================
+ # ==========================================================
     # 4. NẾU Ở XA TRẠM -> ÁP DỤNG CÔNG THỨC MỚI CỦA BẠN
     # ==========================================================
-    THRESHOLD_KM = 2.0  # Bạn có thể đổi số này (ví dụ: cách trạm quá 3km thì tính là xa)
+    THRESHOLD_KM = 2.0  # Ngưỡng 2km như bạn đã thiết lập
     
     if distance_km > THRESHOLD_KM and dem_value is not None:
         
-        # [YÊU CẦU 1] KHÔNG trả về lịch sử
+        # Lấy mốc thời gian hiện tại (giờ 0) từ historical_data trước khi xóa
+        current_time_str = list(historical_data.keys())[-1] if len(historical_data) > 0 else None
+        
+        # Xóa dữ liệu lịch sử
         historical_data = {}
         
-        # [YÊU CẦU 2] Khắc phục lỗi không tìm thấy chữ 'cuong_do_mua'
-        # Trường hợp A: Nó là một cột bình thường
+        # Khắc phục lỗi không tìm thấy chữ 'cuong_do_mua'
         if 'cuong_do_mua' in df_rainfall.columns:
             diff = (df_rainfall['cuong_do_mua'] - rainfall).abs()
             best_idx = diff.idxmin()
             rain_row = df_rainfall.loc[best_idx]
-            
-        # Trường hợp B: Nó đang bị đẩy làm Index (do index_col=0)
         elif df_rainfall.index.name == 'cuong_do_mua' or str(df_rainfall.index.name).strip() == 'cuong_do_mua':
-            # Chuyển index thành Series để trừ
             diff = abs(pd.Series(df_rainfall.index) - rainfall)
-            # Tìm vị trí (index) có giá trị mưa sát nhất
             best_idx = df_rainfall.index[diff.argmin()]
             rain_row = df_rainfall.loc[best_idx]
-            
-        # Trường hợp C: Bị dính ký tự ẩn (BOM) hoặc sai chính tả -> Cứ lấy thẳng cột đầu tiên
         else:
             first_col = df_rainfall.columns[0]
             diff = (df_rainfall[first_col] - rainfall).abs()
             best_idx = diff.idxmin()
             rain_row = df_rainfall.loc[best_idx]
+            
+        # ---------------------------------------------------------
+        # XỬ LÝ GIỜ HIỆN TẠI (Tương ứng với cột 0)
+        # ---------------------------------------------------------
+        rain_val_0 = 0
+        if '0' in rain_row:
+            rain_val_0 = rain_row['0']
+        elif 0 in rain_row:
+            rain_val_0 = rain_row[0]
+            
+        # Gán giá trị cho giờ hiện tại = DEM + Cột 0
+        if current_time_str is not None:
+            historical_data[current_time_str] = dem_value + float(rain_val_0)
         
-        # [YÊU CẦU 3] CHỈ cắt lấy 24 mốc thời gian (24 giờ tới)
+        # ---------------------------------------------------------
+        # XỬ LÝ 24 GIỜ TIẾP THEO (Tương ứng với cột 1 đến 24)
+        # ---------------------------------------------------------
         timestamps = list(forecast_result.keys())[:24]
         new_forecast = {}
         
         for i, ts in enumerate(timestamps):
-            # Cột giờ trong file cuongdomua.csv (từ 1 đến 24)
+            # i bắt đầu từ 0 -> cột tương ứng sẽ là i + 1 (tức là cột 1, 2, 3...)
             hour_key_str = str(i + 1)
             hour_key_int = i + 1
             
@@ -82,10 +93,10 @@ def forecast(longitude: float, latitude: float, rainfall: int, df4forcast: pd.Da
             else:
                 rain_val = 0
                 
-            # Đảm bảo rain_val là số thực trước khi tính toán
+            # Tính toán: DEM + Giá trị cột tương ứng
             new_forecast[ts] = dem_value + float(rain_val)
             
-        # Ghi đè kết quả trả về bằng dữ liệu 24h mới tạo
+        # Ghi đè kết quả trả về
         forecast_result = new_forecast
         nearest_codes = ["INLAND_DEM"] # Đổi tên mã trạm để phân biệt
 
