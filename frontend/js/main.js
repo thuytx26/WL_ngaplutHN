@@ -213,7 +213,7 @@ document.addEventListener("DOMContentLoaded", function () {
       `;
 
       // Khởi tạo bản đồ với tọa độ DBSCL
-      map = initializeMap('map', 21.02, 105.83, 10);
+      map = initializeMap('map', 10.26, 105.98, 9);
 
       let marker;
 
@@ -273,7 +273,7 @@ document.addEventListener("DOMContentLoaded", function () {
               console.error("Error loading GeoJSON:", error);
               predictResult.innerHTML = `<p style='color: red;'>❌ Lỗi khi tải dữ liệu khu vực hợp lệ: ${error.message}</p>`;
           });
-// ========================================================
+      // ========================================================
       // ĐỌC FILE CSV VÀ VẼ CÁC TRẠM LÊN BẢN ĐỒ
       // ========================================================
       // Thay đường dẫn này bằng đường dẫn tới file CSV thực tế của bạn
@@ -315,6 +315,159 @@ document.addEventListener("DOMContentLoaded", function () {
               }
           })
           .catch(error => console.warn("Lỗi xử lý trạm CSV:", error));
+
+      // ========================================================
+      // ĐỌC FILE CSV VÀ VẼ CÁC NGUỒN XẢ THẢI LÊN BẢN ĐỒ
+      // ========================================================
+      const WASTEWATER_CSV_URL = 'assets/data/nguon_xa_thai.csv'; 
+      const COLOR_TABLE_URL = 'assets/data/wqi_color_table.csv';
+
+      // Hàm tải bảng màu và sau đó tải dữ liệu trạm
+      Promise.all([
+          fetch(COLOR_TABLE_URL).then(res => res.text()),
+          fetch(WASTEWATER_CSV_URL).then(res => res.text())
+      ]).then(([colorText, csvText]) => {
+          // 1. Xử lý bảng màu
+          const colorLines = colorText.trim().split('\n');
+          const colorTable = [];
+          const colorHeaders = colorLines[0].split(',').map(h => h.trim().toLowerCase());
+          
+          for (let i = 1; i < colorLines.length; i++) {
+              const cols = colorLines[i].split(',');
+              if (cols.length < 3) continue;
+              
+              const range = cols[0].trim();
+              let min = 0, max = 0;
+              if (range.includes('-')) {
+                  [min, max] = range.split('-').map(v => parseInt(v.trim()));
+              } else if (range.includes('<')) {
+                  max = parseInt(range.replace('<', '').trim()) - 1;
+                  min = 0;
+              }
+
+              colorTable.push({
+                  min, max,
+                  status: cols[1].trim(),
+                  color: cols[3] ? `rgb(${cols[3].replace(/;/g, ',')})` : '#ccc',
+                  usage: cols[4] ? cols[4].trim() : ""
+              });
+          }
+
+          const getStatusByWQI = (wqi) => {
+              const val = parseFloat(wqi);
+              if (isNaN(val)) return { status: "N/A", color: "#808080", usage: "" };
+              return colorTable.find(row => val >= row.min && val <= row.max) || colorTable[colorTable.length - 1];
+          };
+
+          const getRecommendation = (wqi) => {
+              const val = parseFloat(wqi);
+              if (val >= 90) return "người dân trong vùng có thể sử dụng nước trực tiếp cho sinh hoạt";
+              if (val >= 76) return "người dân có thể sử dụng nước cho các mục đích bình thường như tắm, giặt và cần có biện pháp xử lý đặc biệt cho nhu cầu vệ sinh thực thẩm";
+              if (val >= 51) {
+                  return `người dân vùng lân cận không thể sử dụng trực tiếp nguồn nước này cho các mục đích sinh hoạt, trong trường hợp khẩn cấp có thể sử dụng các biện pháp xử lý phù hợp để sử dụng cho các mục đích tắm, giặt, vệ sinh nhà cửa nhưng không sử dụng được cho mục đích ăn uống`;
+              }
+              return `người dân tuyệt đối không sử dụng nguồn nước này cho bất kỳ mục đích sinh hoạt mà cần có giải pháp sử dụng nguồn nước thay thế hoặc biện pháp xử lý tốt phù hợp`;
+          };
+
+          // 2. Xử lý dữ liệu trạm
+          const lines = csvText.trim().split('\n');
+          const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+          const eIdx = headers.indexOf('e'), nIdx = headers.indexOf('n'), codeIdx = headers.indexOf('code'), wqiIdx = headers.indexOf('wqi'), dateIdx = headers.indexOf('date');
+
+          for (let i = 1; i < lines.length; i++) {
+              const cols = lines[i].split(',');
+              if (cols.length <= Math.max(eIdx, nIdx)) continue;
+
+              const lon = parseFloat(cols[eIdx]), lat = parseFloat(cols[nIdx]);
+              if (isNaN(lat) || isNaN(lon)) continue;
+
+              const code = codeIdx !== -1 ? cols[codeIdx].trim() : "N/A";
+              const wqi = wqiIdx !== -1 ? cols[wqiIdx].trim() : "0";
+              const date = dateIdx !== -1 ? cols[dateIdx].trim() : "";
+
+              const info = getStatusByWQI(wqi);
+              const rec = getRecommendation(wqi);
+
+              const wwMarker = L.circleMarker([lat, lon], {
+                  radius: 10,
+                  fillColor: info.color,
+                  color: "#fff",
+                  weight: 2,
+                  opacity: 1,
+                  fillOpacity: 0.9,
+                  interactive: true,
+                  pane: 'markerPane' // Đảm bảo nằm trên layer bản đồ
+              }).addTo(map);
+
+              const popupContent = `
+                  <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #333; line-height: 1.4; width: 100%; box-sizing: border-box; display: block; overflow: hidden; padding: 0; margin: 0;">
+                      <!-- Header -->
+                      <div style="border-bottom: 1px solid #eee; padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; width: 100%;">
+                          <b style="font-size: 13px; color: #2c3e50;">Trạm: ${code}</b>
+                          <span style="font-size: 10px; color: #95a5a6;">${date}</span>
+                      </div>
+
+                      <!-- WQI Info Box -->
+                      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; background: #fafafa; padding: 8px; border-radius: 8px; border: 1px solid #eee; box-sizing: border-box; width: 100%;">
+                          <div style="width: 48px; height: 48px; border: 3px solid ${info.color}; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: white; flex-shrink: 0; box-sizing: border-box;">
+                              <span style="font-size: 7px; color: #7f8c8d; font-weight: bold; text-transform: uppercase; line-height: 1;">WQI</span>
+                              <b style="font-size: 16px; color: #2c3e50; line-height: 1;">${wqi}</b>
+                          </div>
+                          <div style="min-width: 0; flex: 1; box-sizing: border-box;">
+                              <div style="font-size: 9px; color: #7f8c8d; margin-bottom: 1px;">Phân loại:</div>
+                              <div style="font-weight: 800; font-size: 13px; color: ${info.color === 'rgb(255, 255, 0)' ? '#b8860b' : info.color}; line-height: 1.2; word-break: break-word;">
+                                  ${info.status.toUpperCase()}
+                              </div>
+                          </div>
+                      </div>
+
+                      <!-- Usage -->
+                      <div style="margin-bottom: 10px; box-sizing: border-box; width: 100%; display: block;">
+                          <div style="font-size: 11px; font-weight: bold; color: #34495e; margin-bottom: 3px; display: flex; align-items: center; gap: 5px;">
+                              <span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #3498db; flex-shrink: 0;"></span>
+                              Sử dụng:
+                          </div>
+                          <div style="font-size: 11px; color: #535c68; padding-left: 10px; box-sizing: border-box; word-break: break-word; width: 100%; display: block; line-height: 1.3;">
+                              ${info.usage}
+                          </div>
+                      </div>
+
+                      <!-- Recommendation Box -->
+                      <div style="background: #f8f9fa; border-radius: 6px; padding: 10px; border: 1px solid #edf0f2; box-sizing: border-box; width: 100%; display: block;">
+                          <div style="display: inline-block; background: #34495e; color: #fff; font-size: 8px; font-weight: bold; padding: 2px 5px; border-radius: 3px; margin-bottom: 6px; text-transform: uppercase;">
+                              Khuyến nghị
+                          </div>
+                          <div style="font-size: 10.5px; font-style: italic; color: #2c3e50; line-height: 1.4; box-sizing: border-box; word-break: break-word; width: 100%; display: block;">
+                              Dựa trên chất lượng nước đạt loại <b>${info.status}</b>, ${rec}.
+                          </div>
+                      </div>
+                  </div>
+              `;
+
+              wwMarker.bindPopup(popupContent, { 
+                  minWidth: 450,
+                  maxWidth: 700,
+                  autoPan: true,
+                  autoPanPadding: [50, 50]
+              });
+
+
+              wwMarker.on('click', function(e) {
+                  L.DomEvent.stopPropagation(e);
+                  longitudeInput.value = lon.toFixed(6);
+                  latitudeInput.value = lat.toFixed(6);
+                  if (marker) marker.setLatLng([lat, lon]);
+                  else marker = L.marker([lat, lon]).addTo(map);
+                  
+                  // Mở popup thủ công để chắc chắn
+                  wwMarker.openPopup();
+              });
+          }
+      }).catch(err => console.error("Lỗi tải dữ liệu nguồn xả thải:", err));
+
+
+
+
       // ========================================================
       // Thêm sự kiện click vào bản đồ
       map.on('click', function (e) {

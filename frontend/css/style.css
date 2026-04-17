@@ -234,19 +234,29 @@
 
   /* Tăng font-size và line-height cho nội dung popup */
   .leaflet-popup-content {
-    font-size: 1rem;       /* hoặc 16px, 18px tuỳ bạn */
+    font-size: 1rem;
     line-height: 1.5;
     text-align: left;
+    margin: 13px 19px; /* Trả lại margin mặc định của Leaflet hoặc điều chỉnh cho phù hợp */
   }
 
-  /* Tăng chiều rộng tối đa của popup */
+  /* CƯỠNG ÉP CHIỀU RỘNG POPUP */
   .leaflet-popup-content-wrapper {
-    max-width: 300px;      /* thay đổi nếu muốn rộng hơn */
+    width: 500px !important; 
+    max-width: 500px !important;
+    min-width: 500px !important;
+    border-radius: 12px;
+    box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+    overflow: hidden;
   }
 
-  /* (Tuỳ chọn) Tăng padding bên trong */
-  .leaflet-popup-content-wrapper .leaflet-popup-content {
-    padding: 10px 14px;    /* top/bottom 10px, left/right 14px */
+  /* Để nội dung tự co giãn bên trong khung 500px */
+  .leaflet-popup-content {
+    width: auto !important; /* Không ép cứng width để nó tôn trọng margin */
+    margin: 15px 20px !important; /* Tạo khoảng trống đều 2 bên */
+    padding: 0 !important;
+    line-height: 1.5;
+    box-sizing: border-box;
   }
 
   /* (Tuỳ chọn) Tăng kích thước mũi tên */
