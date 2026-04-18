@@ -73,12 +73,146 @@ export function initforcastWQI() {
 
         if (!response.ok) throw new Error(await response.text());
         const result = await response.json();
+        
+        // Hiển thị biểu đồ dự báo
         displayforcast(result, resultBox);
+        
+        // --- KIỂM TRA ĐIỂM XẢ THẢI GẦN NHẤT ---
+        await checkNearbyWastewater(payload.latitude, payload.longitude, resultBox);
+
+        // --- KIỂM TRA THÔNG TIN XÃ VÀ DÂN SỐ ---
+        await checkCommunePopulation(payload.latitude, payload.longitude, resultBox);
+        
       } catch (error) {
         resultBox.innerHTML = `<p style="color:red">❌ Lỗi dự báo WQI: ${error.message}</p>`;
       }
     }
   });
+}
+
+/**
+ * Lấy thông tin xã và dân số từ Backend Proxy
+ */
+async function checkCommunePopulation(lat, lng, container) {
+  try {
+    const url = `${BASE_API_URL}/commune_info?lat=${lat}&lon=${lng}`;
+    const response = await fetch(url);
+    if (!response.ok) return;
+    
+    const data = await response.json();
+    if (data.features && data.features.length > 0) {
+      const feature = data.features[0];
+      const props = feature.properties;
+      
+      // Lấy thông tin dựa trên danh sách attribute thực tế
+      const communeName = props.Xa || 'N/A';
+      const districtName = props.Huyen || 'N/A';
+      const provinceName = props.Tinh || 'N/A';
+      const population = props.DanSo || 0;
+      
+      const infoHTML = `
+        <div style="background-color: #e2e3e5; color: #383d41; padding: 15px; border-radius: 8px; border: 1px solid #d6d8db; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+          <h4 style="margin-top: 0; margin-bottom: 10px;">🏘️ Thông tin khu vực ảnh hưởng</h4>
+          <p style="margin-bottom: 5px;">📍 Vị trí thuộc: <strong>${communeName}</strong>, ${districtName}, ${provinceName}</p>
+          <p style="margin-bottom: 0;">👥 Ước tính số dân trong xã: <strong style="color: #0056b3; font-size: 1.1em;">${Number(population).toLocaleString()} người</strong></p>
+        </div>
+      `;
+      container.insertAdjacentHTML('beforeend', infoHTML);
+    }
+  } catch (error) {
+    console.warn(":", error);
+  }
+}
+
+/**
+ * Tính khoảng cách Haversine giữa 2 điểm (km)
+ */
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Bán kính Trái Đất
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
+ * Lấy dữ liệu WFS và tìm điểm xả thải gần nhất
+ */
+async function checkNearbyWastewater(lat, lng, container) {
+  try {
+    const proxyUrl = `${BASE_API_URL}/wastewater_proxy`;
+    const response = await fetch(proxyUrl);
+    
+    if (!response.ok) {
+      return;
+    }
+    
+    const data = await response.json();
+    
+    if (!data.features || data.features.length === 0) {
+      return;
+    }
+    
+    const points = data.features;
+    
+    let nearestPoints = points.map(feature => {
+      // GeoJSON: coordinates là [longitude, latitude]
+      const coords = feature.geometry.coordinates;
+      const pLng = coords[0];
+      const pLat = coords[1];
+      
+      const dist = calculateDistance(lat, lng, pLat, pLng);
+      
+      const props = feature.properties;
+      
+      // --- TÌM TÊN ĐIỂM DỰA TRÊN DỮ LIỆU THỰC TẾ ---
+      const name = props.TENCSXT || props.ten_diem || props.name || 'Điểm không tên';
+      const code = props.SHDKS || props.ma_diem || 'N/A';
+      const type = props.NGUONXT || ''; // Loại nguồn xả (ví dụ: Thủy sản)
+      
+      return { name, distance: dist, code, type };
+    });
+    
+    // Sắp xếp theo khoảng cách tăng dần
+    nearestPoints.sort((a, b) => a.distance - b.distance);
+    
+    const nearest = nearestPoints[0];
+    const within5km = nearestPoints.filter(p => p.distance <= 5);
+    
+    
+    let alertHTML = '';
+    if (within5km.length > 0) {
+      alertHTML = `
+        <div style="background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; border: 1px solid #ffeeba; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+          <h4 style="margin-top: 0; margin-bottom: 10px;">⚠️ Cảnh báo nguồn gây ô nhiễm</h4>
+          <p>Phát hiện <strong>${within5km.length}</strong> điểm xả thải trong bán kính 5km có khả năng ảnh hưởng đến chất lượng nước:</p>
+          <ul style="margin-bottom: 0; padding-left: 20px;">
+            ${within5km.slice(0, 3).map(p => `<li><strong>${p.name}</strong> ${p.type ? `[${p.type}]` : ''} (Mã: ${p.code}) - Cách khoảng <strong>${p.distance.toFixed(2)} km</strong></li>`).join('')}
+          </ul>
+          ${within5km.length > 3 ? `<p style="font-size: 0.9em; margin-top: 5px;">... và ${within5km.length - 3} điểm khác.</p>` : ''}
+        </div>
+      `;
+    } else if (nearest) {
+      alertHTML = `
+        <div style="background-color: #d1ecf1; color: #0c5460; padding: 15px; border-radius: 8px; border: 1px solid #bee5eb; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+          <h4 style="margin-top: 0; margin-bottom: 10px;">ℹ️ Thông tin môi trường</h4>
+          <p>Không phát hiện điểm xả thải lớn trong bán kính 5km. Điểm xả thải gần nhất là:</p>
+          <p style="margin-bottom: 0;">📍 <strong>${nearest.name}</strong> ${nearest.type ? `[${nearest.type}]` : ''} - Cách khoảng <strong>${nearest.distance.toFixed(2)} km</strong></p>
+        </div>
+      `;
+    }
+    
+    if (alertHTML) {
+      container.insertAdjacentHTML('beforeend', alertHTML);
+    }
+    
+  } catch (error) {
+    console.error(":", error);
+  }
 }
 
 function displayforcast(data, container) {

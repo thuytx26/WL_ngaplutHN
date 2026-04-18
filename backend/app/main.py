@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
 import numpy as np
+import requests
 
 app = FastAPI(root_path="/api")
 
@@ -23,6 +24,47 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/wastewater_proxy")
+async def wastewater_proxy():
+    try:
+        wfs_url = 'https://geoportal.watertech.vn/geoserver/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=geonode:DIEM_XT&outputFormat=application/json'
+        # Thêm headers để giả lập trình duyệt, tránh bị chặn
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        # verify=False để bỏ qua lỗi SSL nếu có, timeout tăng lên 30s
+        response = requests.get(wfs_url, headers=headers, timeout=30, verify=False)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"Proxy Error: {str(e)}") # Log ra console của backend
+        raise HTTPException(status_code=500, detail=f"Error fetching GeoServer data: {str(e)}")
+
+@app.get("/commune_info")
+async def get_commune_info(lat: float, lon: float):
+    # Danh sách các tên lớp có thể có
+    type_names = ['geonode:RanhgioiXa', 'geonode_data:RanhgioiXa']
+    
+    for t_name in type_names:
+        try:
+            # Sử dụng WFS 1.0.0 để tránh vấn đề đảo ngược Lat/Lon của 1.1.0
+            # Và sử dụng đúng trường the_geom như bạn đã cung cấp
+            wfs_url = f"https://geoportal.watertech.vn/geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName={t_name}&outputFormat=application/json&cql_filter=INTERSECTS(the_geom,POINT({lon} {lat}))"
+            
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(wfs_url, headers=headers, timeout=15, verify=False)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("features") and len(data["features"]) > 0:
+                    print(f"Thành công với lớp: {t_name}")
+                    return data
+        except Exception as e:
+            print(f"Lỗi khi thử lớp {t_name}: {str(e)}")
+            continue
+            
+    return {"type": "FeatureCollection", "features": []}
 
 class BatchWQIInput(BaseModel):
     data: List[Dict]

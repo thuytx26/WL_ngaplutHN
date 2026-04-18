@@ -215,6 +215,55 @@ document.addEventListener("DOMContentLoaded", function () {
       // Khởi tạo bản đồ với tọa độ DBSCL
       map = initializeMap('map', 10.26, 105.98, 9);
 
+      // --- THÊM LỚP TỪ GEOSERVER ---
+      const geoserverWmsUrl = 'https://geoportal.watertech.vn/geoserver/wms';
+      const diemXtLayer = L.tileLayer.wms(geoserverWmsUrl, {
+          layers: 'geonode:DIEM_XT',
+          format: 'image/png',
+          transparent: true,
+          version: '1.1.1',
+          attribution: "GeoServer"
+      });
+
+      const ranhGioiXaLayer = L.tileLayer.wms(geoserverWmsUrl, {
+          layers: 'geonode:RanhgioiXa',
+          format: 'image/png',
+          transparent: true,
+          version: '1.1.1',
+          attribution: "GeoServer"
+      });
+
+      //add mặc định điểm xả thải vào map
+      diemXtLayer.addTo(map)
+
+      // Thêm bảng điều khiển lớp (Layer Control) để bật/tắt
+      const overlays = {
+          "Ranh giới xã": ranhGioiXaLayer,
+          "Điểm xả thải": diemXtLayer
+      };
+      L.control.layers(null, overlays).addTo(map);
+      // --- THÊM BẢNG CHÚ GIẢI (LEGEND) ---
+      const legend = L.control({ position: 'bottomright' });
+      legend.onAdd = function (map) {
+          const div = L.DomUtil.create('div', 'info legend');
+          div.style.backgroundColor = 'white';
+          div.style.padding = '10px';
+          div.style.border = '2px solid #ccc';
+          div.style.borderRadius = '5px';
+          div.style.lineHeight = '24px';
+
+          div.innerHTML += '<h4 style="margin: 0 0 5px 0; font-size: 14px;">Chú giải</h4>';
+          // Trạm quan trắc WQI (Dùng màu xanh lá làm đại diện)
+          div.innerHTML += '<i style="background: #FF7E00; width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; border: 1px solid #efefef;"></i> Trạm quan trắc WQI<br>';
+          // Điểm xả thải GeoServer (Dùng màu xanh dương hoặc biểu tượng WMS)
+          div.innerHTML += '<i style="background: #333; width: 6px; height: 6px; display: inline-block; margin-right: 8px;"></i> Điểm xả thải';
+          // Ranh giới xã
+          div.innerHTML += '<br><i style="width: 14px; height: 10px; background: transparent; border: 2px solid #6b7280; display: inline-block; margin-right: 8px;"></i> Ranh giới xã';
+          return div;
+      };
+      legend.addTo(map);
+      // -----------------------------
+
       let marker;
 
       const searchInput = document.getElementById("search-input");
@@ -355,18 +404,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
           const getStatusByWQI = (wqi) => {
               const val = parseFloat(wqi);
-              if (isNaN(val)) return { status: "N/A", color: "#808080", usage: "" };
-              return colorTable.find(row => val >= row.min && val <= row.max) || colorTable[colorTable.length - 1];
-          };
+              if (isNaN(val)) return { status: "N/A", color: "#808080", usage: "Không có dữ liệu" };
+              
+              // Tìm dòng phù hợp trong bảng màu
+              const row = colorTable.find(row => val >= row.min && val <= row.max);
+              if (row) return row;
 
-          const getRecommendation = (wqi) => {
-              const val = parseFloat(wqi);
-              if (val >= 90) return "người dân trong vùng có thể sử dụng nước trực tiếp cho sinh hoạt";
-              if (val >= 76) return "người dân có thể sử dụng nước cho các mục đích bình thường như tắm, giặt và cần có biện pháp xử lý đặc biệt cho nhu cầu vệ sinh thực thẩm";
-              if (val >= 51) {
-                  return `người dân vùng lân cận không thể sử dụng trực tiếp nguồn nước này cho các mục đích sinh hoạt, trong trường hợp khẩn cấp có thể sử dụng các biện pháp xử lý phù hợp để sử dụng cho các mục đích tắm, giặt, vệ sinh nhà cửa nhưng không sử dụng được cho mục đích ăn uống`;
-              }
-              return `người dân tuyệt đối không sử dụng nguồn nước này cho bất kỳ mục đích sinh hoạt mà cần có giải pháp sử dụng nguồn nước thay thế hoặc biện pháp xử lý tốt phù hợp`;
+              // Xử lý trường hợp < 10 nếu không nằm trong khoảng min-max
+              if (val < 10) return colorTable.find(row => row.max === 9) || colorTable[colorTable.length - 1];
+              
+              return colorTable[colorTable.length - 1];
           };
 
           // 2. Xử lý dữ liệu trạm
@@ -386,7 +433,6 @@ document.addEventListener("DOMContentLoaded", function () {
               const date = dateIdx !== -1 ? cols[dateIdx].trim() : "";
 
               const info = getStatusByWQI(wqi);
-              const rec = getRecommendation(wqi);
 
               const wwMarker = L.circleMarker([lat, lon], {
                   radius: 10,
@@ -396,7 +442,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   opacity: 1,
                   fillOpacity: 0.9,
                   interactive: true,
-                  pane: 'markerPane' // Đảm bảo nằm trên layer bản đồ
+                  pane: 'markerPane' 
               }).addTo(map);
 
               const popupContent = `
@@ -421,24 +467,13 @@ document.addEventListener("DOMContentLoaded", function () {
                           </div>
                       </div>
 
-                      <!-- Usage -->
-                      <div style="margin-bottom: 10px; box-sizing: border-box; width: 100%; display: block;">
-                          <div style="font-size: 11px; font-weight: bold; color: #34495e; margin-bottom: 3px; display: flex; align-items: center; gap: 5px;">
-                              <span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #3498db; flex-shrink: 0;"></span>
-                              Sử dụng:
-                          </div>
-                          <div style="font-size: 11px; color: #535c68; padding-left: 10px; box-sizing: border-box; word-break: break-word; width: 100%; display: block; line-height: 1.3;">
-                              ${info.usage}
-                          </div>
-                      </div>
-
                       <!-- Recommendation Box -->
                       <div style="background: #f8f9fa; border-radius: 6px; padding: 10px; border: 1px solid #edf0f2; box-sizing: border-box; width: 100%; display: block;">
                           <div style="display: inline-block; background: #34495e; color: #fff; font-size: 8px; font-weight: bold; padding: 2px 5px; border-radius: 3px; margin-bottom: 6px; text-transform: uppercase;">
-                              Khuyến nghị
+                              Mục đích sử dụng
                           </div>
                           <div style="font-size: 10.5px; font-style: italic; color: #2c3e50; line-height: 1.4; box-sizing: border-box; word-break: break-word; width: 100%; display: block;">
-                              Dựa trên chất lượng nước đạt loại <b>${info.status}</b>, ${rec}.
+                              Dựa trên chất lượng nước đạt loại <b>${info.status}</b>: ${info.usage}.
                           </div>
                       </div>
                   </div>
