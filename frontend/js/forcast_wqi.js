@@ -82,12 +82,95 @@ export function initforcastWQI() {
 
         // --- KIỂM TRA THÔNG TIN XÃ VÀ DÂN SỐ ---
         await checkCommunePopulation(payload.latitude, payload.longitude, resultBox);
+
+        // --- KIỂM TRA LOẠI HÌNH SỬ DỤNG ĐẤT ---
+        await checkLandUseAffect(payload.latitude, payload.longitude, resultBox);
         
       } catch (error) {
         resultBox.innerHTML = `<p style="color:red">❌ Lỗi dự báo WQI: ${error.message}</p>`;
       }
     }
   });
+}
+
+/**
+ * Lấy danh sách loại hình sử dụng đất trong bán kính 5km
+ */
+async function checkLandUseAffect(lat, lng, container) {
+  try {
+    const url = `${BASE_API_URL}/landuse_info?lat=${lat}&lon=${lng}`;
+    const response = await fetch(url);
+    if (!response.ok) return;
+    
+    const data = await response.json();
+    if (data.features && data.features.length > 0) {
+      // 1. Tạo hình tròn bán kính 5km làm vùng đệm (buffer)
+      const center = [lng, lat]; // [lon, lat] cho turf
+      const radius = 5;
+      const options = { steps: 64, units: 'kilometers' };
+      const circle = turf.circle(center, radius, options);
+
+      const areaMap = {}; // Lưu diện tích theo loaiSDD
+
+      data.features.forEach(feature => {
+        try {
+          const loai = feature.properties.loaiSDD || 'Khác';
+          
+          // 2. Tính phần giao nhau giữa thửa đất và hình tròn 5km
+          const intersection = turf.intersect(circle, feature);
+          
+          if (intersection) {
+            // 3. Tính diện tích phần giao nhau (đơn vị m2)
+            const area = turf.area(intersection);
+            
+            if (!areaMap[loai]) areaMap[loai] = 0;
+            areaMap[loai] += area;
+          }
+        } catch (e) {
+          // Bỏ qua nếu có lỗi hình học (như thửa đất không hợp lệ)
+        }
+      });
+
+      // 4. Chuyển Map thành mảng để hiển thị
+      const landUseStats = Object.entries(areaMap)
+        .map(([type, area]) => ({ type, area }))
+        .sort((a, b) => b.area - a.area);
+      
+      if (landUseStats.length > 0) {
+        const totalArea = landUseStats.reduce((sum, item) => sum + item.area, 0);
+        
+        const infoHTML = `
+          <div style="background-color: #f8f9fa; color: #212529; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <h4 style="margin-top: 0; margin-bottom: 10px;">🌾 Hiện trạng sử dụng đất bị ảnh hưởng (Bán kính 5km)</h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+              <thead>
+                <tr style="border-bottom: 2px solid #dee2e6; text-align: left;">
+                  <th style="padding: 8px 0;">Loại hình sử dụng</th>
+                  <th style="padding: 8px 0; text-align: right;">Diện tích (m²)</th>
+                  <th style="padding: 8px 0; text-align: right;">Tỷ lệ (%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${landUseStats.map(item => `
+                  <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px 0;"><strong>${item.type}</strong></td>
+                    <td style="padding: 8px 0; text-align: right;">${Math.round(item.area).toLocaleString()}</td>
+                    <td style="padding: 8px 0; text-align: right;">${((item.area / totalArea) * 100).toFixed(1)}%</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            <p style="margin-top: 10px; font-size: 0.85em; color: #6c757d; border-top: 1px solid #eee; padding-top: 8px;">
+              * Diện tích được tính toán dựa trên phần chồng lấn thực tế với bán kính 5km.
+            </p>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', infoHTML);
+      }
+    }
+  } catch (error) {
+    console.warn("Lỗi khi kiểm tra loại hình sử dụng đất:", error);
+  }
 }
 
 /**
@@ -101,26 +184,41 @@ async function checkCommunePopulation(lat, lng, container) {
     
     const data = await response.json();
     if (data.features && data.features.length > 0) {
-      const feature = data.features[0];
-      const props = feature.properties;
+      const communes = data.features.map(f => {
+        const props = f.properties;
+        return {
+          name: props.Xa || 'N/A',
+          district: props.Huyen || 'N/A',
+          province: props.Tinh || 'N/A',
+          population: Number(props.DanSo) || 0
+        };
+      });
+
+      // Tính tổng dân số
+      const totalPopulation = communes.reduce((sum, c) => sum + c.population, 0);
       
-      // Lấy thông tin dựa trên danh sách attribute thực tế
-      const communeName = props.Xa || 'N/A';
-      const districtName = props.Huyen || 'N/A';
-      const provinceName = props.Tinh || 'N/A';
-      const population = props.DanSo || 0;
-      
+      // Tạo danh sách hiển thị
+      const communeListHTML = communes.slice(0, 5).map(c => 
+        `<li><strong>${c.name}</strong> (${c.district}, ${c.province})</li>`
+      ).join('');
+
       const infoHTML = `
         <div style="background-color: #e2e3e5; color: #383d41; padding: 15px; border-radius: 8px; border: 1px solid #d6d8db; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-          <h4 style="margin-top: 0; margin-bottom: 10px;">🏘️ Thông tin khu vực ảnh hưởng</h4>
-          <p style="margin-bottom: 5px;">📍 Vị trí thuộc: <strong>${communeName}</strong>, ${districtName}, ${provinceName}</p>
-          <p style="margin-bottom: 0;">👥 Ước tính số dân trong xã: <strong style="color: #0056b3; font-size: 1.1em;">${Number(population).toLocaleString()} người</strong></p>
+          <h4 style="margin-top: 0; margin-bottom: 10px;">🏘️ Các khu vực ảnh hưởng (Bán kính 5km)</h4>
+          <p style="margin-bottom: 5px;"><strong>${communes.length}</strong> xã/phường nằm trong khu vực ảnh hưởng:</p>
+          <ul style="margin-bottom: 10px; padding-left: 20px; font-size: 0.95em;">
+            ${communeListHTML}
+            ${communes.length > 5 ? `<li>... và ${communes.length - 5} xã khác.</li>` : ''}
+          </ul>
+          <p style="margin-bottom: 0; border-top: 1px solid #ccc; padding-top: 10px;">
+            👥 Tổng số dân ước tính trong khu vực: <strong style="color: #0056b3; font-size: 1.2em;">${totalPopulation.toLocaleString()} người</strong>
+          </p>
         </div>
       `;
       container.insertAdjacentHTML('beforeend', infoHTML);
     }
   } catch (error) {
-    console.warn(":", error);
+    console.warn("Lỗi khi kiểm tra thông tin dân số:", error);
   }
 }
 
@@ -147,15 +245,10 @@ async function checkNearbyWastewater(lat, lng, container) {
     const proxyUrl = `${BASE_API_URL}/wastewater_proxy`;
     const response = await fetch(proxyUrl);
     
-    if (!response.ok) {
-      return;
-    }
+    if (!response.ok) return;
     
     const data = await response.json();
-    
-    if (!data.features || data.features.length === 0) {
-      return;
-    }
+    if (!data.features || data.features.length === 0) return;
     
     const points = data.features;
     
@@ -183,15 +276,14 @@ async function checkNearbyWastewater(lat, lng, container) {
     const nearest = nearestPoints[0];
     const within5km = nearestPoints.filter(p => p.distance <= 5);
     
-    
     let alertHTML = '';
     if (within5km.length > 0) {
       alertHTML = `
         <div style="background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; border: 1px solid #ffeeba; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
           <h4 style="margin-top: 0; margin-bottom: 10px;">⚠️ Cảnh báo nguồn gây ô nhiễm</h4>
-          <p>Phát hiện <strong>${within5km.length}</strong> điểm xả thải trong bán kính 5km có khả năng ảnh hưởng đến chất lượng nước:</p>
+          <p><strong>${within5km.length}</strong> điểm xả thải trong bán kính 5km có khả năng ảnh hưởng đến chất lượng nước:</p>
           <ul style="margin-bottom: 0; padding-left: 20px;">
-            ${within5km.slice(0, 3).map(p => `<li><strong>${p.name}</strong> ${p.type ? `[${p.type}]` : ''} (Mã: ${p.code}) - Cách khoảng <strong>${p.distance.toFixed(2)} km</strong></li>`).join('')}
+            ${within5km.slice(0, 3).map(p => `<li><strong>${p.name}</strong> ${p.type ? `[${p.type}]` : ''} (Mã: ${p.code})</li>`).join('')}
           </ul>
           ${within5km.length > 3 ? `<p style="font-size: 0.9em; margin-top: 5px;">... và ${within5km.length - 3} điểm khác.</p>` : ''}
         </div>
@@ -201,7 +293,7 @@ async function checkNearbyWastewater(lat, lng, container) {
         <div style="background-color: #d1ecf1; color: #0c5460; padding: 15px; border-radius: 8px; border: 1px solid #bee5eb; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
           <h4 style="margin-top: 0; margin-bottom: 10px;">ℹ️ Thông tin môi trường</h4>
           <p>Không phát hiện điểm xả thải lớn trong bán kính 5km. Điểm xả thải gần nhất là:</p>
-          <p style="margin-bottom: 0;">📍 <strong>${nearest.name}</strong> ${nearest.type ? `[${nearest.type}]` : ''} - Cách khoảng <strong>${nearest.distance.toFixed(2)} km</strong></p>
+          <p style="margin-bottom: 0;">📍 <strong>${nearest.name}</strong> ${nearest.type ? `[${nearest.type}]` : ''}</p>
         </div>
       `;
     }
@@ -211,7 +303,7 @@ async function checkNearbyWastewater(lat, lng, container) {
     }
     
   } catch (error) {
-    console.error(":", error);
+    console.error("Lỗi khi kiểm tra điểm xả thải gần nhất:", error);
   }
 }
 

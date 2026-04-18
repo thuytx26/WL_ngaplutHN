@@ -233,11 +233,20 @@ document.addEventListener("DOMContentLoaded", function () {
           attribution: "GeoServer"
       });
 
+      const hienTrangSddLayer = L.tileLayer.wms(geoserverWmsUrl, {
+          layers: 'geonode:HT_Sdd_DBSCL',
+          format: 'image/png',
+          transparent: true,
+          version: '1.1.1',
+          attribution: "GeoServer"
+      });
+
       //add mặc định điểm xả thải vào map
       diemXtLayer.addTo(map)
 
       // Thêm bảng điều khiển lớp (Layer Control) để bật/tắt
       const overlays = {
+          "Hiện trạng sử dụng đất": hienTrangSddLayer,
           "Ranh giới xã": ranhGioiXaLayer,
           "Điểm xả thải": diemXtLayer
       };

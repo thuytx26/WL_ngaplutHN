@@ -48,9 +48,8 @@ async def get_commune_info(lat: float, lon: float):
     
     for t_name in type_names:
         try:
-            # Sử dụng WFS 1.0.0 để tránh vấn đề đảo ngược Lat/Lon của 1.1.0
-            # Và sử dụng đúng trường the_geom như bạn đã cung cấp
-            wfs_url = f"https://geoportal.watertech.vn/geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName={t_name}&outputFormat=application/json&cql_filter=INTERSECTS(the_geom,POINT({lon} {lat}))"
+            # Sử dụng DWITHIN để lấy các xã trong bán kính 5km
+            wfs_url = f"https://geoportal.watertech.vn/geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName={t_name}&outputFormat=application/json&cql_filter=DWITHIN(the_geom,POINT({lon} {lat}),5,kilometers)"
             
             headers = {'User-Agent': 'Mozilla/5.0'}
             response = requests.get(wfs_url, headers=headers, timeout=15, verify=False)
@@ -58,13 +57,26 @@ async def get_commune_info(lat: float, lon: float):
             if response.status_code == 200:
                 data = response.json()
                 if data.get("features") and len(data["features"]) > 0:
-                    print(f"Thành công với lớp: {t_name}")
                     return data
         except Exception as e:
             print(f"Lỗi khi thử lớp {t_name}: {str(e)}")
             continue
             
     return {"type": "FeatureCollection", "features": []}
+
+@app.get("/landuse_info")
+async def get_landuse_info(lat: float, lon: float):
+    try:
+        # Lấy đầy đủ thuộc tính và hình học để tính diện tích ở frontend
+        wfs_url = f"https://geoportal.watertech.vn/geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=geonode:HT_Sdd_DBSCL&outputFormat=application/json&cql_filter=DWITHIN(the_geom,POINT({lon} {lat}),5,kilometers)"
+        
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(wfs_url, headers=headers, timeout=25, verify=False)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"Landuse Query Error: {str(e)}")
+        return {"type": "FeatureCollection", "features": []}
 
 class BatchWQIInput(BaseModel):
     data: List[Dict]
