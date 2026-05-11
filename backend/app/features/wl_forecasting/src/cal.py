@@ -12,32 +12,30 @@ def avg_by_codes(nearest_codes, df4forcast):
 import rasterio
 from pyproj import Transformer
 
-# Đường dẫn tới file DEM
-DEM_FILE_PATH = "app/features/wl_forecasting/data/Dem_TpHN_48N.tif"
+DEM_FILES = [
+    "app/features/wl_forecasting/data/Dem_TpHN_48N.tif",
+    "app/features/wl_forecasting/data/HCM_HT_DC_84.tif",
+    "app/features/wl_forecasting/data/CT_HT_DC_84.tif",
+    "app/features/wl_forecasting/data/CM_HT_DC_84.tif",
+]
 
-def get_elevation(lat: float, lon: float) -> float:
+def _read_dem(dem_path: str, lat: float, lon: float):
     try:
-        with rasterio.open(DEM_FILE_PATH) as dataset:
-            # 1. Tự động lấy thông tin hệ tọa độ (CRS) của file DEM
-            dem_crs = dataset.crs
-            
-            # 2. Tạo bộ chuyển đổi từ WGS84 (lat, lon) sang CRS của file DEM
-            # always_xy=True để đảm bảo thứ tự truyền vào là (long, lat) -> (x, y)
-            transformer = Transformer.from_crs("EPSG:4326", dem_crs, always_xy=True)
-            
-            # 3. Chuyển đổi tọa độ lat, lon sang tọa độ tương ứng của file
+        with rasterio.open(dem_path) as dataset:
+            transformer = Transformer.from_crs("EPSG:4326", dataset.crs, always_xy=True)
             x, y = transformer.transform(lon, lat)
-            
-            # 4. Lấy giá trị tại tọa độ đã chuyển đổi
-            coords = [(x, y)]
-            for val in dataset.sample(coords):
+            for val in dataset.sample([(x, y)]):
                 elevation = val[0]
-                
                 if elevation == dataset.nodata:
                     return None
-                
                 return float(elevation)
-                
     except Exception as e:
-        print(f"Lỗi: {e}")
+        print(f"Lỗi đọc DEM {dem_path}: {e}")
         return None
+
+def get_elevation(lat: float, lon: float) -> float:
+    for dem_path in DEM_FILES:
+        result = _read_dem(dem_path, lat, lon)
+        if result is not None:
+            return result
+    return None
